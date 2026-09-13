@@ -15,6 +15,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\CadSemanticAssistant.Application\CadSemanticAssistant.Application.csproj" />
+    <ProjectReference Include="..\CadSemanticAssistant.Domain\CadSemanticAssistant.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
 

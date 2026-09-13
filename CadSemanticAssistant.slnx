@@ -8,4 +8,8 @@
   <Folder Name="/tests/">
     <Project Path="CadSemanticAssistant.Tests/CadSemanticAssistant.Tests.csproj" Id="953a954b-2440-4471-ba0d-f35663be6733" />
   </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path="Directory.Build.props" />
+  </Folder>
 </Solution>

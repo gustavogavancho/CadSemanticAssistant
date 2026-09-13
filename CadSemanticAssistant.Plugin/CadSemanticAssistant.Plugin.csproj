@@ -6,4 +6,26 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\CadSemanticAssistant.Application\CadSemanticAssistant.Application.csproj" />
+    <ProjectReference Include="..\CadSemanticAssistant.Infrastructure.AutoCAD\CadSemanticAssistant.Infrastructure.AutoCAD.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="AcCoreMgd">
+      <HintPath>$(AutoCADInstallDir)\AcCoreMgd.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+
+    <Reference Include="AcDbMgd">
+      <HintPath>$(AutoCADInstallDir)\AcDbMgd.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+
+    <Reference Include="AcMgd">
+      <HintPath>$(AutoCADInstallDir)\AcMgd.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
 </Project>
