@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="CadSemanticAssistant.Application/CadSemanticAssistant.Application.csproj" Id="6a042426-73b7-4817-b978-1f4d61159298" />
+    <Project Path="CadSemanticAssistant.Domain/CadSemanticAssistant.Domain.csproj" Id="27cc24e4-54c4-4e7e-a0fa-87c0b0e575a6" />
+    <Project Path="CadSemanticAssistant.Infrastructure.AutoCAD/CadSemanticAssistant.Infrastructure.AutoCAD.csproj" Id="10e7cd62-601b-4d4e-ad54-216b1df349ac" />
+    <Project Path="CadSemanticAssistant.Plugin/CadSemanticAssistant.Plugin.csproj" Id="f5ea497e-b8cf-40f1-a340-51bd48779d96" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="CadSemanticAssistant.Tests/CadSemanticAssistant.Tests.csproj" Id="953a954b-2440-4471-ba0d-f35663be6733" />
+  </Folder>
+</Solution>
