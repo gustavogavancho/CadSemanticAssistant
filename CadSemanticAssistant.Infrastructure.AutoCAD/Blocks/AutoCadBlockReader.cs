@@ -55,9 +55,11 @@ public sealed class AutoCadBlockReader : ICadBlockReader
 
         CadPoint position = new(blockReference.Position.X, blockReference.Position.Y, blockReference.Position.Z);
 
+        string handle = blockReference.Handle.ToString();
+
         return new CadBlock
         {
-            Id = blockReference.Handle.ToString(),
+            Id = handle,
 
             Name = effectiveName,
 
