@@ -1,0 +1,27 @@
+<Project>
+
+  <PropertyGroup>
+    <!-- Hace que las reglas de estilo del .editorconfig
+         también se evalúen durante Build/Rebuild -->
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+
+    <!-- Habilita analizadores .NET -->
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+
+    <!-- Ejecuta analizadores durante la compilación -->
+    <RunAnalyzersDuringBuild>true</RunAnalyzersDuringBuild>
+
+    <!-- Ejecuta analizadores mientras escribes código -->
+    <RunAnalyzersDuringLiveAnalysis>true</RunAnalyzersDuringLiveAnalysis>
+
+    <!-- Nivel de análisis -->
+    <AnalysisLevel>latest</AnalysisLevel>
+
+    <!-- Nullable -->
+    <Nullable>enable</Nullable>
+
+    <!-- Implicit usings -->
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+</Project>

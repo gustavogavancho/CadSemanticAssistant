@@ -1,7 +1,6 @@
-﻿namespace CadSemanticAssistant.Plugin
-{
-    public class Class1
-    {
+namespace CadSemanticAssistant.Plugin;
 
-    }
+public class Class1
+{
+
 }

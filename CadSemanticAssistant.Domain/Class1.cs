@@ -1,7 +1,6 @@
-﻿namespace CadSemanticAssistant.Domain
-{
-    public class Class1
-    {
+namespace CadSemanticAssistant.Domain;
 
-    }
+public class Class1
+{
+
 }
