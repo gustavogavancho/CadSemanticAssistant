@@ -7,8 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\CadSemanticAssistant.Application\CadSemanticAssistant.Application.csproj" />
     <ProjectReference Include="..\CadSemanticAssistant.Infrastructure.AutoCAD\CadSemanticAssistant.Infrastructure.AutoCAD.csproj" />
+    <ProjectReference Include="..\CadSemanticAssistant.Infrastructure.Configuration\CadSemanticAssistant.Infrastructure.Configuration.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -26,6 +26,17 @@
       <HintPath>$(AutoCADInstallDir)\AcMgd.dll</HintPath>
       <Private>false</Private>
     </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Configuration\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Configuration\semantic-mapping.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>Config\semantic-mapping.json</TargetPath>
+    </None>
   </ItemGroup>
 
 </Project>

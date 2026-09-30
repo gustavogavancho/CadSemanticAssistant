@@ -2,10 +2,14 @@ using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Runtime;
-
 using CadSemanticAssistant.Application.Blocks;
+using CadSemanticAssistant.Application.Semantics;
+using CadSemanticAssistant.Application.Semantics.Configuration;
 using CadSemanticAssistant.Domain;
+using CadSemanticAssistant.Domain.Models;
+using CadSemanticAssistant.Domain.Semantics;
 using CadSemanticAssistant.Infrastructure.AutoCAD.Blocks;
+using CadSemanticAssistant.Infrastructure.Configuration.Semantics;
 using AcadApplication = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace CadSemanticAssistant.Plugin.Commands;
@@ -91,6 +95,110 @@ public sealed class CadCommands
                 foreach (KeyValuePair<string, string> attribute in block.Attributes)
                 {
                     editor.WriteMessage($"\n  {attribute.Key} = {attribute.Value}");
+                }
+            }
+
+            index++;
+        }
+
+        editor.WriteMessage("\n");
+    }
+
+    [CommandMethod("CSA_READENTITIES")]
+    public void ReadSemanticEntities()
+    {
+        Document? document = AcadApplication.DocumentManager.MdiActiveDocument;
+
+        if (document is null)
+        {
+            return;
+        }
+
+        Editor editor = document.Editor;
+
+        Database database = document.Database;
+
+        try
+        {
+            ICadBlockReader blockReader = new AutoCadBlockReader(database);
+
+            string configurationPath = GetConfigurationPath();
+
+            ISemanticMappingConfigurationProvider configurationProvider = new JsonSemanticMappingConfigurationProvider(configurationPath);
+
+            SemanticMappingConfiguration configuration = configurationProvider.GetConfiguration();
+
+            IBlockSemanticMapper semanticMapper = new RuleBasedCadSemanticMapper(configuration);
+
+            ReadSemanticEntitiesUseCase useCase = new(blockReader, semanticMapper);
+
+            IReadOnlyCollection<SemanticMappingResult> results = useCase.Execute();
+
+            PrintSemanticEntities(editor, results);
+        }
+        catch (System.Exception exception)
+        {
+            editor.WriteMessage($"\nError reading semantic entities: {exception.Message}");
+        }
+    }
+
+    private static string GetConfigurationPath()
+    {
+        string pluginDirectory =
+            Path.GetDirectoryName(typeof(CadCommands).Assembly.Location)
+            ?? AppContext.BaseDirectory;
+
+        return Path.Combine(
+            pluginDirectory,
+            "Config",
+            "semantic-mapping.json");
+    }
+
+    private static void PrintSemanticEntities(Editor editor, IReadOnlyCollection<SemanticMappingResult> results)
+    {
+        editor.WriteMessage($"\n\nFound {results.Count} semantic entities.");
+
+        int index = 1;
+
+        foreach (SemanticMappingResult result in results)
+        {
+            CadEntity entity = result.Entity;
+
+            editor.WriteMessage($"\n\n[{index}]");
+
+            editor.WriteMessage($"\nId: {entity.Id}");
+
+            editor.WriteMessage($"\nType: {entity.Type}");
+
+            editor.WriteMessage($"\nName: {entity.Name}");
+
+            editor.WriteMessage($"\nLayer: {entity.Layer}");
+
+            editor.WriteMessage(
+                $"\nPosition: " +
+                $"X={entity.Position.X:0.###}, " +
+                $"Y={entity.Position.Y:0.###}, " +
+                $"Z={entity.Position.Z:0.###}");
+
+            if (entity.Properties.Count > 0)
+            {
+                editor.WriteMessage("\nSemantic properties:");
+
+                foreach (KeyValuePair<string, SemanticPropertyValue> property in entity.Properties)
+                {
+                    string unit = string.IsNullOrWhiteSpace(property.Value.Unit) ? string.Empty : $" {property.Value.Unit}";
+
+                    editor.WriteMessage($"\n  {property.Key} = " + $"{property.Value.Value}{unit}");
+                }
+            }
+
+            if (result.Warnings.Count > 0)
+            {
+                editor.WriteMessage("\nWarnings:");
+
+                foreach (string warning in result.Warnings)
+                {
+                    editor.WriteMessage($"\n  - {warning}");
                 }
             }
 

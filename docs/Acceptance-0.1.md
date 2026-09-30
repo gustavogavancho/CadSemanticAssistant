@@ -10,12 +10,19 @@
 CadSemanticAssistant.Plugin/bin/Debug/net10.0/CadSemanticAssistant.Plugin.dll
 ```
 
+Conservar también la carpeta `Config` junto a la DLL, incluyendo:
+
+```text
+Config/semantic-mapping.json
+```
+
 ## Smoke test del plugin
 
 | Caso | Pasos | Resultado esperado |
 |---|---|---|
 | Plugin carga con NETLOAD | Ejecutar `NETLOAD` y seleccionar la DLL | AutoCAD carga la DLL sin error y muestra `CAD Semantic Assistant loaded.` |
 | `CSA_PING` funciona | Ejecutar `CSA_PING` en la línea de comandos | Aparece `CAD Semantic Assistant is running.` |
+| `CSA_READENTITIES` funciona | Ejecutar `CSA_READENTITIES` con `Config/semantic-mapping.json` junto a la DLL | Se cargan las reglas semánticas y se muestran las entidades sin el error de archivo no encontrado |
 
 ## Smoke test de lectura
 
@@ -49,4 +56,4 @@ dotnet build
 dotnet test --no-restore
 ```
 
-Las pruebas comprueban el contrato de bloques, el caso sin bloques, la igualdad de `CadPoint` y que el ensamblado Domain no referencia Autodesk.
+Las pruebas comprueban el contrato de bloques, el caso sin bloques, la igualdad de `CadPoint`, la carga del JSON semántico y que el ensamblado Domain no referencia Autodesk.

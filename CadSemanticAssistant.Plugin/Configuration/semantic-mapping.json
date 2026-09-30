@@ -1,0 +1,65 @@
+{
+  "entityMappings": [
+    {
+      "entityType": "Rack",
+      "blockNamePatterns": [
+        "RACK_*"
+      ],
+      "properties": [
+        {
+          "sourceAttribute": "MODEL",
+          "targetProperty": "model",
+          "dataType": "String",
+          "required": true
+        },
+        {
+          "sourceAttribute": "HEIGHT",
+          "targetProperty": "height",
+          "dataType": "Double",
+          "unit": "mm",
+          "required": false
+        },
+        {
+          "sourceAttribute": "CAPACITY",
+          "targetProperty": "capacity",
+          "dataType": "Integer",
+          "required": false
+        }
+      ]
+    },
+    {
+      "entityType": "Machine",
+      "blockNamePatterns": [
+        "MACHINE_*"
+      ],
+      "properties": [
+        {
+          "sourceAttribute": "MODEL",
+          "targetProperty": "model",
+          "dataType": "String",
+          "required": false
+        },
+        {
+          "sourceAttribute": "TYPE",
+          "targetProperty": "machineType",
+          "dataType": "String",
+          "required": false
+        }
+      ]
+    },
+    {
+      "entityType": "Conveyor",
+      "blockNamePatterns": [
+        "CONVEYOR_*"
+      ],
+      "properties": [
+        {
+          "sourceAttribute": "TYPE",
+          "targetProperty": "conveyorType",
+          "dataType": "String",
+          "required": false
+        }
+      ]
+    }
+  ]
+}
