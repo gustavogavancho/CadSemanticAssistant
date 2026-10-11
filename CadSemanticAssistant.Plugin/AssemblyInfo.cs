@@ -5,3 +5,4 @@ using CadSemanticAssistant.Plugin.Commands;
 
 [assembly: ExtensionApplication(typeof(PluginEntryPoint))]
 [assembly: CommandClass(typeof(CadCommands))]
+[assembly: CommandClass(typeof(TestDataCommands))]
