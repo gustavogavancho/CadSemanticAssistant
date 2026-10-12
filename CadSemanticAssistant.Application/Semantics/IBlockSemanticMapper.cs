@@ -1,4 +1,4 @@
-using CadSemanticAssistant.Domain;
+using CadSemanticAssistant.Domain.Models;
 
 namespace CadSemanticAssistant.Application.Semantics;
 

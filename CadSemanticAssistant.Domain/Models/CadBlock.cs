@@ -1,4 +1,4 @@
-namespace CadSemanticAssistant.Domain;
+namespace CadSemanticAssistant.Domain.Models;
 
 public sealed class CadBlock
 {

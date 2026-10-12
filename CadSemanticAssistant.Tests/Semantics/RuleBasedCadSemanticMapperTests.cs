@@ -1,6 +1,7 @@
 using CadSemanticAssistant.Application.Semantics;
 using CadSemanticAssistant.Application.Semantics.Configuration;
 using CadSemanticAssistant.Domain;
+using CadSemanticAssistant.Domain.Models;
 using CadSemanticAssistant.Domain.Semantics;
 
 

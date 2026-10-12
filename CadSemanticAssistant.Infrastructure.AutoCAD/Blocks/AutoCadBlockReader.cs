@@ -1,7 +1,7 @@
 using Autodesk.AutoCAD.DatabaseServices;
 
 using CadSemanticAssistant.Application.Blocks;
-using CadSemanticAssistant.Domain;
+using CadSemanticAssistant.Domain.Models;
 
 namespace CadSemanticAssistant.Infrastructure.AutoCAD.Blocks;
 

@@ -5,12 +5,13 @@ using Autodesk.AutoCAD.Runtime;
 using CadSemanticAssistant.Application.Blocks;
 using CadSemanticAssistant.Application.Semantics;
 using CadSemanticAssistant.Application.Semantics.Configuration;
-using CadSemanticAssistant.Domain;
 using CadSemanticAssistant.Domain.Models;
 using CadSemanticAssistant.Domain.Semantics;
 using CadSemanticAssistant.Infrastructure.AutoCAD.Blocks;
 using CadSemanticAssistant.Infrastructure.Configuration.Semantics;
 using AcadApplication = Autodesk.AutoCAD.ApplicationServices.Application;
+using CadSemanticAssistant.Application.Queries;
+using CadSemanticAssistant.Domain.Queries;
 
 namespace CadSemanticAssistant.Plugin.Commands;
 
@@ -200,6 +201,120 @@ public sealed class CadCommands
                 {
                     editor.WriteMessage($"\n  - {warning}");
                 }
+            }
+
+            index++;
+        }
+
+        editor.WriteMessage("\n");
+    }
+
+    [CommandMethod("CSA_TESTQUERY")]
+    public void TestSemanticQuery()
+    {
+        Document? document = AcadApplication.DocumentManager.MdiActiveDocument;
+
+        if (document is null)
+        {
+            return;
+        }
+
+        Editor editor = document.Editor;
+
+        Database database = document.Database;
+
+        try
+        {
+            IReadOnlyCollection<CadEntity> entities = ReadSemanticEntities(database);
+
+            SemanticQuery query = CreateTestQuery();
+
+            ISemanticQueryEngine queryEngine = new SemanticQueryEngine();
+
+            SemanticQueryResult result = queryEngine.Execute(query, entities);
+
+            PrintQueryResult(editor, result);
+        }
+        catch (System.Exception exception)
+        {
+            editor.WriteMessage($"\nError executing semantic query: {exception.Message}");
+        }
+    }
+
+    private static SemanticQuery CreateTestQuery()
+    {
+        return new SemanticQuery
+        {
+            Intent = QueryIntent.Select,
+            EntityType = SemanticEntityType.Rack,
+            Filters =
+            [
+                new QueryFilter
+                {
+                    Property = "model",
+                    Operator = QueryOperator.Equals,
+                    Value = "SC2"
+                },
+
+                new QueryFilter
+                {
+                    Property = "height",
+                    Operator = QueryOperator.GreaterThan,
+                    Value = 10000d
+                }
+            ]
+        };
+    }
+
+    private static IReadOnlyCollection<CadEntity> ReadSemanticEntities(Database database)
+    {
+        ICadBlockReader blockReader = new AutoCadBlockReader(database);
+
+        string configurationPath = Path.Combine(AppContext.BaseDirectory, "Config", "semantic-mapping.json");
+
+        ISemanticMappingConfigurationProvider configurationProvider = new JsonSemanticMappingConfigurationProvider(configurationPath);
+
+        SemanticMappingConfiguration configuration = configurationProvider.GetConfiguration();
+
+        IBlockSemanticMapper semanticMapper = new RuleBasedCadSemanticMapper(configuration);
+
+        ReadSemanticEntitiesUseCase useCase = new(blockReader, semanticMapper);
+
+        IReadOnlyCollection<SemanticMappingResult> mappingResults = useCase.Execute();
+
+        return mappingResults.Select(result => result.Entity)
+            .ToArray();
+    }
+
+    private static void PrintQueryResult(Editor editor, SemanticQueryResult result)
+    {
+        editor.WriteMessage("\n\nSemantic query executed.");
+
+        editor.WriteMessage($"\nIntent: {result.Query.Intent}");
+
+        editor.WriteMessage($"\nEntity type: {result.Query.EntityType}");
+
+        editor.WriteMessage($"\nFilters: {result.Query.Filters.Count}");
+
+        editor.WriteMessage($"\nResults: {result.Count}");
+
+        int index = 1;
+
+        foreach (CadEntity entity in result.Entities)
+        {
+            editor.WriteMessage($"\n\n[{index}]");
+
+            editor.WriteMessage($"\nId: {entity.Id}");
+
+            editor.WriteMessage($"\nName: {entity.Name}");
+
+            editor.WriteMessage($"\nType: {entity.Type}");
+
+            foreach (KeyValuePair<string, SemanticPropertyValue> property in entity.Properties)
+            {
+                string unit = string.IsNullOrWhiteSpace(property.Value.Unit) ? string.Empty : $" {property.Value.Unit}";
+
+                editor.WriteMessage($"\n{property.Key}: " + $"{property.Value.Value}{unit}");
             }
 
             index++;

@@ -1,7 +1,7 @@
 using System.Reflection;
 
 using CadSemanticAssistant.Application.Blocks;
-using CadSemanticAssistant.Domain;
+using CadSemanticAssistant.Domain.Models;
 
 namespace CadSemanticAssistant.Tests;
 
