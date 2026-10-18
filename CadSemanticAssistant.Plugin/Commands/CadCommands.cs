@@ -145,14 +145,9 @@ public sealed class CadCommands
 
     private static string GetConfigurationPath()
     {
-        string pluginDirectory =
-            Path.GetDirectoryName(typeof(CadCommands).Assembly.Location)
-            ?? AppContext.BaseDirectory;
+        string pluginDirectory = Path.GetDirectoryName(typeof(CadCommands).Assembly.Location) ?? AppContext.BaseDirectory;
 
-        return Path.Combine(
-            pluginDirectory,
-            "Config",
-            "semantic-mapping.json");
+        return Path.Combine(pluginDirectory, "Config", "semantic-mapping.json");
     }
 
     private static void PrintSemanticEntities(Editor editor, IReadOnlyCollection<SemanticMappingResult> results)
@@ -243,26 +238,89 @@ public sealed class CadCommands
 
     private static SemanticQuery CreateTestQuery()
     {
+        //return new SemanticQuery
+        //{
+        //    Intent = QueryIntent.Select,
+        //    EntityType = SemanticEntityType.Rack,
+        //    //Filters =
+        //    //[
+        //    //    new QueryFilter
+        //    //    {
+        //    //        Property = "model",
+        //    //        Operator = QueryOperator.Equals,
+        //    //        Value = "SC2"
+        //    //    }
+
+        //    //    //new QueryFilter
+        //    //    //{
+        //    //    //    Property = "height",
+        //    //    //    Operator = QueryOperator.GreaterThan,
+        //    //    //    Value = 10000d
+        //    //    //}
+        //    //]
+        //};
+
+
+        //return new SemanticQuery
+        //{
+        //    Intent = QueryIntent.Select,
+
+        //    EntityType = SemanticEntityType.Rack,
+
+        //    Filters =
+        //    [
+        //        new QueryFilter
+        //        {
+        //            Property = "height",
+
+        //            Operator =
+        //                QueryOperator.GreaterThan,
+
+        //            Value = 10000d
+        //        }
+        //    ]
+        //};
+
+        //return new SemanticQuery
+        //{
+        //    Intent = QueryIntent.Select,
+
+        //    EntityType = SemanticEntityType.Rack,
+
+        //    Filters =
+        //    [
+        //        new QueryFilter
+        //        {
+        //            Property = "capacity",
+
+        //            Operator =
+        //                QueryOperator.GreaterThanOrEqual,
+
+        //            Value = 40
+        //        }
+        //    ]
+        //};
+
         return new SemanticQuery
         {
-            Intent = QueryIntent.Select,
-            EntityType = SemanticEntityType.Rack,
-            Filters =
-            [
-                new QueryFilter
-                {
-                    Property = "model",
-                    Operator = QueryOperator.Equals,
-                    Value = "SC2"
-                },
+            Intent =
+        QueryIntent.Select,
 
-                new QueryFilter
-                {
-                    Property = "height",
-                    Operator = QueryOperator.GreaterThan,
-                    Value = 10000d
-                }
-            ]
+            EntityType =
+        SemanticEntityType.Machine,
+
+            Filters =
+    [
+        new QueryFilter
+        {
+            Property = "machineType",
+
+            Operator =
+                QueryOperator.Equals,
+
+            Value = "Miniload"
+        }
+    ]
         };
     }
 
@@ -270,7 +328,7 @@ public sealed class CadCommands
     {
         ICadBlockReader blockReader = new AutoCadBlockReader(database);
 
-        string configurationPath = Path.Combine(AppContext.BaseDirectory, "Config", "semantic-mapping.json");
+        string configurationPath = GetConfigurationPath();
 
         ISemanticMappingConfigurationProvider configurationProvider = new JsonSemanticMappingConfigurationProvider(configurationPath);
 
@@ -282,8 +340,7 @@ public sealed class CadCommands
 
         IReadOnlyCollection<SemanticMappingResult> mappingResults = useCase.Execute();
 
-        return mappingResults.Select(result => result.Entity)
-            .ToArray();
+        return mappingResults.Select(result => result.Entity).ToArray();
     }
 
     private static void PrintQueryResult(Editor editor, SemanticQueryResult result)
