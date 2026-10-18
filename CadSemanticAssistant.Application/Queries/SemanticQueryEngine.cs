@@ -27,71 +27,37 @@ public sealed class SemanticQueryEngine : ISemanticQueryEngine
         };
     }
 
-    private static bool MatchesFilter(
-        CadEntity entity,
-        QueryFilter filter)
+    private static bool MatchesFilter(CadEntity entity, QueryFilter filter)
     {
-        bool propertyFound =
-            entity.Properties.TryGetValue(
-                filter.Property,
-                out SemanticPropertyValue? property);
+        bool propertyFound = entity.Properties.TryGetValue(filter.Property, out SemanticPropertyValue? property);
 
-        if (!propertyFound ||
-            property is null)
+        if (!propertyFound || property is null)
         {
             return false;
         }
 
-        return Compare(
-            property.Value,
-            filter.Operator,
-            filter.Value);
+        return Compare(property.Value, filter.Operator, filter.Value);
     }
 
-    private static bool Compare(
-        object propertyValue,
-        QueryOperator queryOperator,
-        object queryValue)
+    private static bool Compare(object propertyValue, QueryOperator queryOperator, object queryValue)
     {
         return queryOperator switch
         {
-            QueryOperator.Equals =>
-                AreEqual(
-                    propertyValue,
-                    queryValue),
+            QueryOperator.Equals => AreEqual(propertyValue, queryValue),
 
-            QueryOperator.NotEquals =>
-                !AreEqual(
-                    propertyValue,
-                    queryValue),
+            QueryOperator.NotEquals => !AreEqual(propertyValue, queryValue),
 
-            QueryOperator.GreaterThan =>
-                CompareValues(
-                    propertyValue,
-                    queryValue) > 0,
+            QueryOperator.GreaterThan => CompareValues(propertyValue, queryValue) > 0,
 
-            QueryOperator.GreaterThanOrEqual =>
-                CompareValues(
-                    propertyValue,
-                    queryValue) >= 0,
+            QueryOperator.GreaterThanOrEqual => CompareValues(propertyValue, queryValue) >= 0,
 
-            QueryOperator.LessThan =>
-                CompareValues(
-                    propertyValue,
-                    queryValue) < 0,
+            QueryOperator.LessThan => CompareValues(propertyValue, queryValue) < 0,
 
-            QueryOperator.LessThanOrEqual =>
-                CompareValues(
-                    propertyValue,
-                    queryValue) <= 0,
+            QueryOperator.LessThanOrEqual => CompareValues(propertyValue, queryValue) <= 0,
 
-            QueryOperator.Contains =>
-                Contains(
-                    propertyValue,
-                    queryValue),
+            QueryOperator.Contains => Contains(propertyValue, queryValue),
 
-            _ =>
-                false
+            _ => false
         };
     }
 

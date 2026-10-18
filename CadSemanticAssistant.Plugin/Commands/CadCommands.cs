@@ -12,6 +12,8 @@ using CadSemanticAssistant.Infrastructure.Configuration.Semantics;
 using AcadApplication = Autodesk.AutoCAD.ApplicationServices.Application;
 using CadSemanticAssistant.Application.Queries;
 using CadSemanticAssistant.Domain.Queries;
+using CadSemanticAssistant.Application.Selection;
+using CadSemanticAssistant.Infrastructure.AutoCAD.Selection;
 
 namespace CadSemanticAssistant.Plugin.Commands;
 
@@ -226,9 +228,15 @@ public sealed class CadCommands
 
             ISemanticQueryEngine queryEngine = new SemanticQueryEngine();
 
-            SemanticQueryResult result = queryEngine.Execute(query, entities);
+            SemanticQueryResult queryResult = queryEngine.Execute(query, entities);
 
-            PrintQueryResult(editor, result);
+            PrintQueryResult(editor, queryResult);
+
+            ICadEntitySelectionService selectionService = new AutoCadEntitySelectionService(database, editor);
+
+            CadSelectionResult selectionResult = selectionService.Select(queryResult.Entities);
+
+            PrintSelectionResult(editor, selectionResult);
         }
         catch (System.Exception exception)
         {
@@ -238,90 +246,50 @@ public sealed class CadCommands
 
     private static SemanticQuery CreateTestQuery()
     {
-        //return new SemanticQuery
-        //{
-        //    Intent = QueryIntent.Select,
-        //    EntityType = SemanticEntityType.Rack,
-        //    //Filters =
-        //    //[
-        //    //    new QueryFilter
-        //    //    {
-        //    //        Property = "model",
-        //    //        Operator = QueryOperator.Equals,
-        //    //        Value = "SC2"
-        //    //    }
-
-        //    //    //new QueryFilter
-        //    //    //{
-        //    //    //    Property = "height",
-        //    //    //    Operator = QueryOperator.GreaterThan,
-        //    //    //    Value = 10000d
-        //    //    //}
-        //    //]
-        //};
-
-
-        //return new SemanticQuery
-        //{
-        //    Intent = QueryIntent.Select,
-
-        //    EntityType = SemanticEntityType.Rack,
-
-        //    Filters =
-        //    [
-        //        new QueryFilter
-        //        {
-        //            Property = "height",
-
-        //            Operator =
-        //                QueryOperator.GreaterThan,
-
-        //            Value = 10000d
-        //        }
-        //    ]
-        //};
-
-        //return new SemanticQuery
-        //{
-        //    Intent = QueryIntent.Select,
-
-        //    EntityType = SemanticEntityType.Rack,
-
-        //    Filters =
-        //    [
-        //        new QueryFilter
-        //        {
-        //            Property = "capacity",
-
-        //            Operator =
-        //                QueryOperator.GreaterThanOrEqual,
-
-        //            Value = 40
-        //        }
-        //    ]
-        //};
-
         return new SemanticQuery
         {
             Intent =
-        QueryIntent.Select,
+                QueryIntent.Select,
 
             EntityType =
-        SemanticEntityType.Machine,
+                SemanticEntityType.Machine,
 
             Filters =
-    [
-        new QueryFilter
-        {
-            Property = "machineType",
+            [
+                new QueryFilter
+            {
+                Property =
+                    "machineType",
 
-            Operator =
-                QueryOperator.Equals,
+                Operator =
+                    QueryOperator.Equals,
 
-            Value = "Miniload"
-        }
-    ]
+                Value =
+                    "Miniload"
+            }
+            ]
         };
+    }
+
+    private static void PrintSelectionResult(Editor editor, CadSelectionResult result)
+    {
+        editor.WriteMessage("\n\nAutoCAD selection:");
+
+        editor.WriteMessage($"\nRequested: {result.RequestedCount}");
+
+        editor.WriteMessage($"\nSelected: {result.SelectedCount}");
+
+        if (result.UnresolvedEntityIds.Count > 0)
+        {
+            editor.WriteMessage("\nUnresolved entity IDs:");
+
+            foreach (string entityId in result.UnresolvedEntityIds)
+            {
+                editor.WriteMessage($"\n  - {entityId}");
+            }
+        }
+
+        editor.WriteMessage("\n");
     }
 
     private static IReadOnlyCollection<CadEntity> ReadSemanticEntities(Database database)
@@ -378,5 +346,22 @@ public sealed class CadCommands
         }
 
         editor.WriteMessage("\n");
+    }
+
+    [CommandMethod("CSA_CLEARSELECTION")]
+    public void ClearSelection()
+    {
+        Document? document = AcadApplication.DocumentManager.MdiActiveDocument;
+
+        if (document is null)
+        {
+            return;
+        }
+
+        ICadEntitySelectionService selectionService = new AutoCadEntitySelectionService(document.Database, document.Editor);
+
+        selectionService.ClearSelection();
+
+        document.Editor.WriteMessage("\nSelection cleared.");
     }
 }
