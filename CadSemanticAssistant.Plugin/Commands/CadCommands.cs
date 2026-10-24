@@ -14,6 +14,8 @@ using CadSemanticAssistant.Application.Queries;
 using CadSemanticAssistant.Domain.Queries;
 using CadSemanticAssistant.Application.Selection;
 using CadSemanticAssistant.Infrastructure.AutoCAD.Selection;
+using CadSemanticAssistant.Plugin.Infrastructure;
+using CadSemanticAssistant.Plugin.UI;
 
 namespace CadSemanticAssistant.Plugin.Commands;
 
@@ -125,7 +127,7 @@ public sealed class CadCommands
         {
             ICadBlockReader blockReader = new AutoCadBlockReader(database);
 
-            string configurationPath = GetConfigurationPath();
+            string configurationPath = PluginPaths.SemanticMappingConfiguration;
 
             ISemanticMappingConfigurationProvider configurationProvider = new JsonSemanticMappingConfigurationProvider(configurationPath);
 
@@ -143,13 +145,6 @@ public sealed class CadCommands
         {
             editor.WriteMessage($"\nError reading semantic entities: {exception.Message}");
         }
-    }
-
-    private static string GetConfigurationPath()
-    {
-        string pluginDirectory = Path.GetDirectoryName(typeof(CadCommands).Assembly.Location) ?? AppContext.BaseDirectory;
-
-        return Path.Combine(pluginDirectory, "Config", "semantic-mapping.json");
     }
 
     private static void PrintSemanticEntities(Editor editor, IReadOnlyCollection<SemanticMappingResult> results)
@@ -296,7 +291,7 @@ public sealed class CadCommands
     {
         ICadBlockReader blockReader = new AutoCadBlockReader(database);
 
-        string configurationPath = GetConfigurationPath();
+        string configurationPath = PluginPaths.SemanticMappingConfiguration;
 
         ISemanticMappingConfigurationProvider configurationProvider = new JsonSemanticMappingConfigurationProvider(configurationPath);
 
@@ -363,5 +358,20 @@ public sealed class CadCommands
         selectionService.ClearSelection();
 
         document.Editor.WriteMessage("\nSelection cleared.");
+    }
+
+    [CommandMethod("CSA_SHOWPALETTE")]
+    public void ShowPalette()
+    {
+        try
+        {
+            SemanticAssistantPaletteHost.Show();
+        }
+        catch (System.Exception exception)
+        {
+            Document? document = AcadApplication.DocumentManager.MdiActiveDocument;
+            document?.Editor.WriteMessage(
+                $"\nError showing Semantic Assistant palette: {exception}");
+        }
     }
 }

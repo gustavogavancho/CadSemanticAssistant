@@ -1,0 +1,333 @@
+<UserControl
+    x:Class="CadSemanticAssistant.Presentation.Wpf.Views.SemanticQueryPaletteView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Background="#1E1E1E"
+    Foreground="#E0E0E0"
+    FontFamily="Segoe UI"
+    FontSize="12">
+
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary
+                    Source="/CadSemanticAssistant.Presentation.Wpf;component/Resources/DarkTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <!-- Compact styles just for filter section -->
+            <Style x:Key="CompactFilterLabelStyle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="Foreground" Value="#D8D8D8" />
+            </Style>
+
+            <Style x:Key="CompactFilterComboBoxStyle" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+                <Setter Property="Height" Value="26" />
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="Padding" Value="6,1" />
+            </Style>
+
+            <Style x:Key="CompactFilterTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                <Setter Property="Height" Value="27" />
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="Padding" Value="6,1" />
+            </Style>
+
+            <Style x:Key="CompactFilterButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                <Setter Property="MinHeight" Value="24" />
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="Padding" Value="7,2" />
+            </Style>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid Margin="8">
+
+        <Grid.RowDefinitions>
+            <!-- Query -->
+            <RowDefinition Height="Auto" />
+
+            <!-- Filters -->
+            <RowDefinition Height="3.1*" MinHeight="0" />
+
+            <!-- Execute -->
+            <RowDefinition Height="Auto" />
+
+            <!-- Results -->
+            <RowDefinition Height="2.4*" MinHeight="100" />
+
+            <!-- Actions -->
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Query -->
+        <StackPanel Grid.Row="0">
+
+            <TextBlock
+                FontSize="14"
+                FontWeight="SemiBold"
+                Foreground="White"
+                Text="Semantic query" />
+
+            <TextBlock
+                Margin="0,8,0,4"
+                Text="Entity type" />
+
+            <ComboBox
+                Height="28"
+                ItemsSource="{Binding EntityTypes}"
+                SelectedItem="{Binding SelectedEntityType}" />
+
+        </StackPanel>
+
+        <!-- Filters -->
+        <Grid
+            Grid.Row="1"
+            Margin="0,12,0,0"
+            MinHeight="0">
+
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" MinHeight="0" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <TextBlock
+                Grid.Row="0"
+                Margin="0,0,0,6"
+                FontWeight="SemiBold"
+                Foreground="White"
+                Text="Filters" />
+
+            <ScrollViewer
+                Grid.Row="1"
+                MinHeight="0"
+                HorizontalScrollBarVisibility="Disabled"
+                VerticalScrollBarVisibility="Auto">
+
+                <ItemsControl ItemsSource="{Binding Filters}">
+
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+
+                            <Border
+                                Margin="0,0,4,6"
+                                Padding="6"
+                                Background="{StaticResource DarkSurface}"
+                                BorderBrush="{StaticResource DarkBorder}"
+                                BorderThickness="1"
+                                CornerRadius="4">
+
+                                <Grid>
+
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Property -->
+                                    <StackPanel
+                                        Grid.Row="0"
+                                        Grid.Column="0"
+                                        Margin="0,0,4,0">
+
+                                        <TextBlock
+                                            Margin="0,0,0,3"
+                                            Style="{StaticResource CompactFilterLabelStyle}"
+                                            Text="Property" />
+
+                                        <ComboBox
+                                            Style="{StaticResource CompactFilterComboBoxStyle}"
+                                            DisplayMemberPath="DisplayName"
+                                            ItemsSource="{Binding AvailableProperties}"
+                                            SelectedItem="{Binding SelectedProperty}" />
+                                    </StackPanel>
+
+                                    <!-- Operator -->
+                                    <StackPanel
+                                        Grid.Row="0"
+                                        Grid.Column="1"
+                                        Margin="4,0,0,0">
+
+                                        <TextBlock
+                                            Margin="0,0,0,3"
+                                            Style="{StaticResource CompactFilterLabelStyle}"
+                                            Text="Operator" />
+
+                                        <ComboBox
+                                            Style="{StaticResource CompactFilterComboBoxStyle}"
+                                            ItemsSource="{Binding AvailableOperators}"
+                                            SelectedItem="{Binding SelectedOperator}" />
+                                    </StackPanel>
+
+                                    <!-- Value label -->
+                                    <TextBlock
+                                        Grid.Row="1"
+                                        Grid.ColumnSpan="2"
+                                        Margin="0,7,0,3"
+                                        Style="{StaticResource CompactFilterLabelStyle}"
+                                        Text="Value" />
+
+                                    <!-- Value input -->
+                                    <TextBox
+                                        Grid.Row="2"
+                                        Grid.ColumnSpan="2"
+                                        Style="{StaticResource CompactFilterTextBoxStyle}"
+                                        Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" />
+
+                                    <!-- Remove filter -->
+                                    <Button
+                                        Grid.Row="3"
+                                        Grid.ColumnSpan="2"
+                                        Margin="0,7,0,0"
+                                        HorizontalAlignment="Right"
+                                        Style="{StaticResource CompactFilterButtonStyle}"
+                                        Command="{Binding
+                                            DataContext.RemoveFilterCommand,
+                                            RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}"
+                                        CommandParameter="{Binding}"
+                                        Content="Remove filter" />
+
+                                </Grid>
+
+                            </Border>
+
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+
+                </ItemsControl>
+
+            </ScrollViewer>
+
+            <Button
+                Grid.Row="2"
+                Margin="0,5,0,0"
+                HorizontalAlignment="Left"
+                Style="{StaticResource CompactFilterButtonStyle}"
+                Command="{Binding AddFilterCommand}"
+                Content="+ Add filter" />
+
+        </Grid>
+
+        <!-- Execute -->
+        <Button
+            Grid.Row="2"
+            Height="30"
+            Margin="0,10,0,10"
+            HorizontalAlignment="Stretch"
+            Style="{StaticResource DarkPrimaryButton}"
+            Command="{Binding ExecuteCommand}"
+            Content="Execute query" />
+
+        <!-- Results -->
+        <Grid
+            Grid.Row="3"
+            MinHeight="0">
+
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" MinHeight="0" />
+            </Grid.RowDefinitions>
+
+            <Grid
+                Grid.Row="0"
+                Margin="0,0,0,6">
+
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock
+                    Grid.Column="0"
+                    FontWeight="SemiBold"
+                    Foreground="White"
+                    Text="Results" />
+
+                <TextBlock
+                    Grid.Column="1"
+                    Foreground="{StaticResource DarkMuted}">
+
+                    <Run Text="{Binding ResultCount, Mode=OneWay}" />
+                    <Run Text=" found" />
+
+                </TextBlock>
+
+            </Grid>
+
+            <DataGrid
+                Grid.Row="1"
+                MinHeight="0"
+                AutoGenerateColumns="False"
+                CanUserAddRows="False"
+                CanUserDeleteRows="False"
+                IsReadOnly="True"
+                ItemsSource="{Binding Results}"
+                HeadersVisibility="Column"
+                SelectionMode="Extended"
+                HorizontalScrollBarVisibility="Auto"
+                VerticalScrollBarVisibility="Auto"
+                EnableRowVirtualization="True"
+                EnableColumnVirtualization="True">
+
+                <DataGrid.Columns>
+                    <DataGridTextColumn
+                        Width="*"
+                        MinWidth="90"
+                        Binding="{Binding Name}"
+                        Header="Name" />
+
+                    <DataGridTextColumn
+                        Width="*"
+                        MinWidth="75"
+                        Binding="{Binding Type}"
+                        Header="Type" />
+
+                    <DataGridTextColumn
+                        Width="2*"
+                        MinWidth="150"
+                        Binding="{Binding Properties}"
+                        Header="Properties" />
+                </DataGrid.Columns>
+
+            </DataGrid>
+
+        </Grid>
+
+        <!-- Actions -->
+        <StackPanel
+            Grid.Row="4"
+            Margin="0,8,0,0">
+
+            <WrapPanel Orientation="Horizontal">
+
+                <Button
+                    Margin="0,0,6,5"
+                    Command="{Binding SelectResultsCommand}"
+                    Content="Select results" />
+
+                <Button
+                    Margin="0,0,0,5"
+                    Command="{Binding ClearSelectionCommand}"
+                    Content="Clear selection" />
+
+            </WrapPanel>
+
+            <TextBlock
+                Margin="0,4,0,0"
+                FontSize="11"
+                Foreground="{StaticResource DarkMuted}"
+                TextWrapping="Wrap"
+                Text="{Binding StatusText}" />
+
+        </StackPanel>
+
+    </Grid>
+
+</UserControl>

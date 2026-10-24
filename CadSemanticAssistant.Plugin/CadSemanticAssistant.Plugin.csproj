@@ -1,14 +1,16 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <UseWPF>true</UseWPF>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\CadSemanticAssistant.Infrastructure.AutoCAD\CadSemanticAssistant.Infrastructure.AutoCAD.csproj" />
     <ProjectReference Include="..\CadSemanticAssistant.Infrastructure.Configuration\CadSemanticAssistant.Infrastructure.Configuration.csproj" />
+    <ProjectReference Include="..\CadSemanticAssistant.Presentation.Wpf\CadSemanticAssistant.Presentation.Wpf.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -33,7 +35,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="Configuration\semantic-mapping.json">
+    <None Update="Configuration\semantic-mapping.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <TargetPath>Config\semantic-mapping.json</TargetPath>
     </None>
