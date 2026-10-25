@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="CadSemanticAssistant.Application/CadSemanticAssistant.Application.csproj" Id="6a042426-73b7-4817-b978-1f4d61159298" />
     <Project Path="CadSemanticAssistant.Domain/CadSemanticAssistant.Domain.csproj" Id="27cc24e4-54c4-4e7e-a0fa-87c0b0e575a6" />
+    <Project Path="CadSemanticAssistant.Infrastructure.AI.OpenAI/CadSemanticAssistant.Infrastructure.AI.OpenAI.csproj" Id="21d906ef-2a43-4e72-ac0f-1822dd0e6826" />
     <Project Path="CadSemanticAssistant.Infrastructure.AutoCAD/CadSemanticAssistant.Infrastructure.AutoCAD.csproj" Id="10e7cd62-601b-4d4e-ad54-216b1df349ac" />
     <Project Path="CadSemanticAssistant.Infrastructure.Configuration/CadSemanticAssistant.Infrastructure.Configuration.csproj" Id="0276507d-c145-4bf5-ab4e-9e291fc93020" />
     <Project Path="CadSemanticAssistant.Plugin/CadSemanticAssistant.Plugin.csproj" Id="f5ea497e-b8cf-40f1-a340-51bd48779d96" />

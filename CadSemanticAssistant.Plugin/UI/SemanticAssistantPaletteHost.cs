@@ -13,6 +13,8 @@ using CadSemanticAssistant.Plugin.Services;
 using CadSemanticAssistant.Presentation.Wpf.ViewModels;
 using CadSemanticAssistant.Presentation.Wpf.Views;
 
+using CadSemanticAssistant.Infrastructure.AI.OpenAI.NaturalLanguage;
+
 
 namespace CadSemanticAssistant.Plugin.UI;
 
@@ -43,7 +45,31 @@ public static class SemanticAssistantPaletteHost
 
         ISemanticQuerySession querySession = new AutoCadSemanticQuerySession(configurationPath);
 
-        SemanticQueryPaletteViewModel viewModel = new(querySession, configuration);
+        string? apiKey =
+    Environment.GetEnvironmentVariable(
+        "OPENAI_API_KEY");
+
+        string? model =
+            Environment.GetEnvironmentVariable(
+                "CSA_OPENAI_MODEL");
+
+        string? reasoningEffort =
+            Environment.GetEnvironmentVariable(
+                "CSA_OPENAI_REASONING_EFFORT");
+
+        INaturalLanguageQueryInterpreter
+            naturalLanguageQueryInterpreter =
+                new OpenAiNaturalLanguageQueryInterpreter(
+                    apiKey,
+                    model,
+                    configuration,
+                    reasoningEffort);
+
+        SemanticQueryPaletteViewModel viewModel =
+            new(
+                querySession,
+                configuration,
+                naturalLanguageQueryInterpreter);
 
         SemanticQueryPaletteView view = new()
         {

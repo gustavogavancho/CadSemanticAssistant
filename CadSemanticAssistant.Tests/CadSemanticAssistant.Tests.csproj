@@ -15,6 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\CadSemanticAssistant.Infrastructure.AI.OpenAI\CadSemanticAssistant.Infrastructure.AI.OpenAI.csproj" />
     <ProjectReference Include="..\CadSemanticAssistant.Application\CadSemanticAssistant.Application.csproj" />
     <ProjectReference Include="..\CadSemanticAssistant.Domain\CadSemanticAssistant.Domain.csproj" />
     <ProjectReference Include="..\CadSemanticAssistant.Infrastructure.Configuration\CadSemanticAssistant.Infrastructure.Configuration.csproj" />

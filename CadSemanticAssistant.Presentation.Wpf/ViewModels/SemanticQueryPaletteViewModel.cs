@@ -7,6 +7,7 @@ using CadSemanticAssistant.Application.Semantics.Configuration;
 using CadSemanticAssistant.Domain.Models;
 using CadSemanticAssistant.Domain.Queries;
 using CadSemanticAssistant.Domain.Semantics;
+using CadSemanticAssistant.Infrastructure.AI.OpenAI.NaturalLanguage;
 
 namespace CadSemanticAssistant.Presentation.Wpf.ViewModels;
 
@@ -21,29 +22,63 @@ public sealed class SemanticQueryPaletteViewModel : ObservableObject
 
     private string _statusText = "Ready.";
 
-    public SemanticQueryPaletteViewModel(ISemanticQuerySession querySession, SemanticMappingConfiguration configuration)
+    private readonly INaturalLanguageQueryInterpreter _naturalLanguageQueryInterpreter;
+
+    private string _naturalLanguageText = string.Empty;
+
+    private bool _isInterpreting;
+
+    public SemanticQueryPaletteViewModel(
+        ISemanticQuerySession querySession,
+        SemanticMappingConfiguration configuration,
+        INaturalLanguageQueryInterpreter naturalLanguageQueryInterpreter)
     {
-        _querySession = querySession;
+        _querySession =
+            querySession;
 
-        _configuration = configuration;
+        _configuration =
+            configuration;
 
-        EntityTypes = new ObservableCollection<SemanticEntityType>(configuration.EntityMappings.Select(mapping => mapping.EntityType).Distinct());
+        _naturalLanguageQueryInterpreter =
+            naturalLanguageQueryInterpreter;
+
+        EntityTypes =
+            new ObservableCollection<SemanticEntityType>(
+                configuration.EntityMappings
+                    .Select(mapping => mapping.EntityType)
+                    .Distinct());
 
         Filters = [];
 
         Results = [];
 
-        AddFilterCommand = new RelayCommand(_ => AddFilter());
+        AddFilterCommand =
+            new RelayCommand(
+                _ => AddFilter());
 
-        RemoveFilterCommand = new RelayCommand(RemoveFilter);
+        RemoveFilterCommand =
+            new RelayCommand(
+                RemoveFilter);
 
-        ExecuteCommand = new RelayCommand(_ => ExecuteQuery());
+        ExecuteCommand =
+            new RelayCommand(
+                _ => ExecuteQuery());
 
-        SelectResultsCommand = new RelayCommand(_ => SelectResults(), _ => _lastResult?.Count > 0);
+        SelectResultsCommand =
+            new RelayCommand(
+                _ => SelectResults(),
+                _ => _lastResult?.Count > 0);
 
-        ClearSelectionCommand = new RelayCommand(_ => ClearSelection());
+        ClearSelectionCommand =
+            new RelayCommand(
+                _ => ClearSelection());
 
-        SelectedEntityType = EntityTypes.FirstOrDefault();
+        InterpretNaturalLanguageCommand =
+            new AsyncRelayCommand(
+                InterpretNaturalLanguageAsync);
+
+        SelectedEntityType =
+            EntityTypes.FirstOrDefault();
 
         AddFilter();
     }
@@ -74,6 +109,29 @@ public sealed class SemanticQueryPaletteViewModel : ObservableObject
         get => _statusText;
 
         private set => SetProperty(ref _statusText, value);
+    }
+
+    public string NaturalLanguageText
+    {
+        get => _naturalLanguageText;
+
+        set => SetProperty(
+            ref _naturalLanguageText,
+            value);
+    }
+
+    public bool IsInterpreting
+    {
+        get => _isInterpreting;
+
+        private set => SetProperty(
+            ref _isInterpreting,
+            value);
+    }
+
+    public AsyncRelayCommand InterpretNaturalLanguageCommand
+    {
+        get;
     }
 
     public int ResultCount => Results.Count;
@@ -322,5 +380,79 @@ public sealed class SemanticQueryPaletteViewModel : ObservableObject
         }
 
         throw new FormatException($"'{value}' is not a valid Boolean value.");
+    }
+
+    private async Task InterpretNaturalLanguageAsync()
+    {
+        if (string.IsNullOrWhiteSpace(
+                NaturalLanguageText))
+        {
+            StatusText =
+                "Enter a natural-language query.";
+
+            return;
+        }
+
+        try
+        {
+            IsInterpreting =
+                true;
+
+            StatusText =
+                "Interpreting query...";
+
+            SemanticQuery query =
+                await _naturalLanguageQueryInterpreter
+                    .InterpretAsync(
+                        NaturalLanguageText);
+
+            ApplySemanticQuery(
+                query);
+
+            StatusText =
+                $"Query interpreted as {query.EntityType} with " +
+                $"{query.Filters.Count} filter(s). Review the structured query " +
+                "and press Execute query.";
+        }
+        catch (Exception exception)
+        {
+            StatusText =
+                $"Could not interpret query: {exception.Message}";
+        }
+        finally
+        {
+            IsInterpreting =
+                false;
+        }
+    }
+
+    private void ApplySemanticQuery(
+    SemanticQuery query)
+    {
+        SelectedEntityType =
+            query.EntityType;
+
+        Filters.Clear();
+
+        QueryPropertyOption[] availableProperties =
+            GetAvailableProperties()
+                .ToArray();
+
+        foreach (
+            QueryFilter queryFilter
+            in query.Filters)
+        {
+            QueryFilterRowViewModel filterRow =
+                new();
+
+            filterRow.SetProperties(
+                availableProperties);
+
+            filterRow.Apply(
+                queryFilter);
+
+            Filters.Add(
+                filterRow);
+        }
     }
 }

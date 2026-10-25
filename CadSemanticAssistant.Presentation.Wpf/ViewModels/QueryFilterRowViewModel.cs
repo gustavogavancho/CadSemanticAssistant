@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
+
 using CadSemanticAssistant.Domain.Queries;
 
 namespace CadSemanticAssistant.Presentation.Wpf.ViewModels;
@@ -97,5 +99,44 @@ public sealed class QueryFilterRowViewModel
         }
 
         SelectedOperator = AvailableOperators.FirstOrDefault();
+    }
+
+    public void Apply(
+    QueryFilter filter)
+    {
+        QueryPropertyOption? property =
+            AvailableProperties
+                .FirstOrDefault(
+                    item =>
+                        string.Equals(
+                            item.Name,
+                            filter.Property,
+                            StringComparison.OrdinalIgnoreCase));
+
+        if (property is null)
+        {
+            throw new InvalidOperationException(
+                $"Property '{filter.Property}' is not available.");
+        }
+
+        SelectedProperty =
+            property;
+
+        if (!AvailableOperators.Contains(
+                filter.Operator))
+        {
+            throw new InvalidOperationException(
+                $"Operator '{filter.Operator}' is not valid " +
+                $"for property '{filter.Property}'.");
+        }
+
+        SelectedOperator =
+            filter.Operator;
+
+        Value =
+            Convert.ToString(
+                filter.Value,
+                CultureInfo.InvariantCulture)
+            ?? string.Empty;
     }
 }

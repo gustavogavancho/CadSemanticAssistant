@@ -5,9 +5,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\CadSemanticAssistant.Infrastructure.AI.OpenAI\CadSemanticAssistant.Infrastructure.AI.OpenAI.csproj" />
     <ProjectReference Include="..\CadSemanticAssistant.Infrastructure.AutoCAD\CadSemanticAssistant.Infrastructure.AutoCAD.csproj" />
     <ProjectReference Include="..\CadSemanticAssistant.Infrastructure.Configuration\CadSemanticAssistant.Infrastructure.Configuration.csproj" />
     <ProjectReference Include="..\CadSemanticAssistant.Presentation.Wpf\CadSemanticAssistant.Presentation.Wpf.csproj" />
