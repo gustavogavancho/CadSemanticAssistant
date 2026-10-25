@@ -3,6 +3,7 @@ using Autodesk.AutoCAD.DatabaseServices;
 
 using CadSemanticAssistant.Application.Blocks;
 using CadSemanticAssistant.Application.Queries;
+using CadSemanticAssistant.Application.Queries.Validation;
 using CadSemanticAssistant.Application.Selection;
 using CadSemanticAssistant.Application.Semantics;
 using CadSemanticAssistant.Application.Semantics.Configuration;
@@ -11,6 +12,7 @@ using CadSemanticAssistant.Domain.Queries;
 using CadSemanticAssistant.Infrastructure.AutoCAD.Blocks;
 using CadSemanticAssistant.Infrastructure.AutoCAD.Selection;
 using CadSemanticAssistant.Infrastructure.Configuration.Semantics;
+using CadSemanticAssistant.Application.Queries.Validation;
 
 namespace CadSemanticAssistant.Plugin.Services;
 
@@ -20,29 +22,47 @@ public sealed class AutoCadSemanticQuerySession : ISemanticQuerySession
 
     private Document? _lastQueryDocument;
 
-    public AutoCadSemanticQuerySession(string configurationPath)
+    private readonly ISemanticQueryValidator _queryValidator;
+
+    public AutoCadSemanticQuerySession(
+        string configurationPath,
+        ISemanticQueryValidator queryValidator)
     {
-        _configurationPath = configurationPath;
+        _configurationPath =
+            configurationPath;
+
+        _queryValidator =
+            queryValidator;
     }
 
-    public SemanticQueryResult Execute(SemanticQuery query)
+    public SemanticQueryResult Execute(
+        SemanticQuery query)
     {
-        Document document = GetActiveDocument();
+        Document document =
+            GetActiveDocument();
 
-        /*
-         * The PaletteSet is modeless.
-         * Therefore we explicitly lock the current document
-         * before interacting with AutoCAD.
-         */
-        using DocumentLock documentLock = document.LockDocument();
+        using DocumentLock documentLock =
+            document.LockDocument();
 
-        IReadOnlyCollection<CadEntity> entities = ReadSemanticEntities(document.Database);
+        IReadOnlyCollection<CadEntity> entities =
+            ReadSemanticEntities(
+                document.Database);
 
-        ISemanticQueryEngine queryEngine = new SemanticQueryEngine();
+        ISemanticQueryEngine queryEngine =
+            new SemanticQueryEngine();
 
-        SemanticQueryResult result = queryEngine.Execute(query, entities);
+        ExecuteSemanticQueryUseCase useCase =
+            new(
+                _queryValidator,
+                queryEngine);
 
-        _lastQueryDocument = document;
+        SemanticQueryResult result =
+            useCase.Execute(
+                query,
+                entities);
+
+        _lastQueryDocument =
+            document;
 
         return result;
     }

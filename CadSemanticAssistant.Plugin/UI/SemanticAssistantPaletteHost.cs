@@ -1,19 +1,14 @@
 using System.Drawing;
-
 using Autodesk.AutoCAD.Windows;
-
 using CadSemanticAssistant.Application.Queries;
+using CadSemanticAssistant.Application.Queries.Validation;
 using CadSemanticAssistant.Application.Semantics.Configuration;
-
+using CadSemanticAssistant.Infrastructure.AI.OpenAI.NaturalLanguage;
 using CadSemanticAssistant.Infrastructure.Configuration.Semantics;
-
 using CadSemanticAssistant.Plugin.Infrastructure;
 using CadSemanticAssistant.Plugin.Services;
-
 using CadSemanticAssistant.Presentation.Wpf.ViewModels;
 using CadSemanticAssistant.Presentation.Wpf.Views;
-
-using CadSemanticAssistant.Infrastructure.AI.OpenAI.NaturalLanguage;
 
 
 namespace CadSemanticAssistant.Plugin.UI;
@@ -43,33 +38,19 @@ public static class SemanticAssistantPaletteHost
 
         SemanticMappingConfiguration configuration = configurationProvider.GetConfiguration();
 
-        ISemanticQuerySession querySession = new AutoCadSemanticQuerySession(configurationPath);
+        ISemanticQueryValidator queryValidator = new SemanticQueryValidator(configuration);
 
-        string? apiKey =
-    Environment.GetEnvironmentVariable(
-        "OPENAI_API_KEY");
+        ISemanticQuerySession querySession = new AutoCadSemanticQuerySession(configurationPath, queryValidator);
 
-        string? model =
-            Environment.GetEnvironmentVariable(
-                "CSA_OPENAI_MODEL");
+        string? apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY");
 
-        string? reasoningEffort =
-            Environment.GetEnvironmentVariable(
-                "CSA_OPENAI_REASONING_EFFORT");
+        string? model = Environment.GetEnvironmentVariable("CSA_OPENAI_MODEL");
 
-        INaturalLanguageQueryInterpreter
-            naturalLanguageQueryInterpreter =
-                new OpenAiNaturalLanguageQueryInterpreter(
-                    apiKey,
-                    model,
-                    configuration,
-                    reasoningEffort);
+        string? reasoningEffort = Environment.GetEnvironmentVariable("CSA_OPENAI_REASONING_EFFORT");
 
-        SemanticQueryPaletteViewModel viewModel =
-            new(
-                querySession,
-                configuration,
-                naturalLanguageQueryInterpreter);
+        INaturalLanguageQueryInterpreter naturalLanguageQueryInterpreter = new OpenAiNaturalLanguageQueryInterpreter(apiKey, model, configuration, reasoningEffort);
+
+        SemanticQueryPaletteViewModel viewModel = new(querySession, configuration, naturalLanguageQueryInterpreter, queryValidator);
 
         SemanticQueryPaletteView view = new()
         {

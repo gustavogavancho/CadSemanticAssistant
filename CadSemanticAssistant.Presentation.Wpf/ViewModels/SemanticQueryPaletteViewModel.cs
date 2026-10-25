@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using CadSemanticAssistant.Application.Queries;
+using CadSemanticAssistant.Application.Queries.Validation;
 using CadSemanticAssistant.Application.Selection;
 using CadSemanticAssistant.Application.Semantics;
 using CadSemanticAssistant.Application.Semantics.Configuration;
@@ -28,10 +29,13 @@ public sealed class SemanticQueryPaletteViewModel : ObservableObject
 
     private bool _isInterpreting;
 
+    private readonly ISemanticQueryValidator _queryValidator;
+
     public SemanticQueryPaletteViewModel(
         ISemanticQuerySession querySession,
         SemanticMappingConfiguration configuration,
-        INaturalLanguageQueryInterpreter naturalLanguageQueryInterpreter)
+        INaturalLanguageQueryInterpreter naturalLanguageQueryInterpreter,
+        ISemanticQueryValidator queryValidator)
     {
         _querySession =
             querySession;
@@ -41,6 +45,8 @@ public sealed class SemanticQueryPaletteViewModel : ObservableObject
 
         _naturalLanguageQueryInterpreter =
             naturalLanguageQueryInterpreter;
+
+        _queryValidator = queryValidator;
 
         EntityTypes =
             new ObservableCollection<SemanticEntityType>(
@@ -402,17 +408,27 @@ public sealed class SemanticQueryPaletteViewModel : ObservableObject
                 "Interpreting query...";
 
             SemanticQuery query =
-                await _naturalLanguageQueryInterpreter
-                    .InterpretAsync(
-                        NaturalLanguageText);
+    await _naturalLanguageQueryInterpreter
+        .InterpretAsync(
+            NaturalLanguageText);
+
+            SemanticQueryValidationResult validationResult =
+                _queryValidator.Validate(
+                    query);
+
+            if (!validationResult.IsValid)
+            {
+                throw new SemanticQueryValidationException(
+                    validationResult.Errors);
+            }
 
             ApplySemanticQuery(
                 query);
 
             StatusText =
-                $"Query interpreted as {query.EntityType} with " +
-                $"{query.Filters.Count} filter(s). Review the structured query " +
-                "and press Execute query.";
+                $"Interpreted {query.EntityType} query " +
+                $"with {query.Filters.Count} filter(s). " +
+                "Review it and press Execute query.";
         }
         catch (Exception exception)
         {
