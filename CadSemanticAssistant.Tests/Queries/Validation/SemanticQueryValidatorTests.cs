@@ -60,6 +60,39 @@ public sealed class SemanticQueryValidatorTests
     }
 
     [Fact]
+    public void Validate_QueryWithValidScope_ShouldBeValid()
+    {
+        SemanticQuery query = new()
+        {
+            Intent = QueryIntent.Select,
+            EntityType = SemanticEntityType.Rack,
+            ScopeEntityIds = ["1", "2"]
+        };
+
+        SemanticQueryValidationResult result = _validator.Validate(query);
+
+        Assert.True(result.IsValid);
+    }
+
+    [Fact]
+    public void Validate_QueryWithBlankScopeEntityId_ShouldFail()
+    {
+        SemanticQuery query = new()
+        {
+            Intent = QueryIntent.Select,
+            EntityType = SemanticEntityType.Rack,
+            ScopeEntityIds = ["1", " "]
+        };
+
+        SemanticQueryValidationResult result = _validator.Validate(query);
+
+        Assert.False(result.IsValid);
+        AssertContainsError(
+            result,
+            SemanticQueryValidationErrorCode.InvalidScope);
+    }
+
+    [Fact]
     public void Validate_UnknownProperty_ShouldFail()
     {
         SemanticQuery query = new()

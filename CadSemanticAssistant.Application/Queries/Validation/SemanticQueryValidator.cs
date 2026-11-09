@@ -30,6 +30,10 @@ public sealed class SemanticQueryValidator
             query,
             errors);
 
+        ValidateScope(
+            query,
+            errors);
+
         EntityMappingRule? entityMapping =
             FindEntityMapping(
                 query);
@@ -71,6 +75,26 @@ public sealed class SemanticQueryValidator
                 SemanticQueryValidationErrorCode.UnsupportedIntent,
 
                 $"Query intent '{query.Intent}' is not supported."));
+    }
+
+    private static void ValidateScope(
+        SemanticQuery query,
+        ICollection<SemanticQueryValidationError> errors)
+    {
+        if (query.ScopeEntityIds.Count == 0)
+        {
+            return;
+        }
+
+        if (query.ScopeEntityIds.Any(
+                string.IsNullOrWhiteSpace))
+        {
+            errors.Add(
+                new SemanticQueryValidationError(
+                    SemanticQueryValidationErrorCode.InvalidScope,
+
+                    "The semantic query scope contains an invalid entity ID."));
+        }
     }
 
     private EntityMappingRule? FindEntityMapping(

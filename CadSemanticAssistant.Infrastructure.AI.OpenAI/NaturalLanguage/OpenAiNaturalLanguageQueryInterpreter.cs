@@ -2,8 +2,11 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using CadSemanticAssistant.Application.Interaction;
+using CadSemanticAssistant.Application.NaturalLanguage;
 using CadSemanticAssistant.Application.Semantics;
 using CadSemanticAssistant.Application.Semantics.Configuration;
+using CadSemanticAssistant.Domain.Models;
 using CadSemanticAssistant.Domain.Queries;
 using CadSemanticAssistant.Domain.Semantics;
 using OpenAI.Chat;
@@ -40,6 +43,7 @@ public sealed class OpenAiNaturalLanguageQueryInterpreter
 
     public async Task<SemanticQuery> InterpretAsync(
         string text,
+        InteractionContext context,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(text))
@@ -49,11 +53,12 @@ public sealed class OpenAiNaturalLanguageQueryInterpreter
                 nameof(text));
         }
 
+        ArgumentNullException.ThrowIfNull(context);
+
         ChatClient client =
             GetClient();
 
-        string systemPrompt =
-            BuildSystemPrompt();
+        string systemPrompt = BuildSystemPrompt(context);
 
         string jsonSchema =
             BuildJsonSchema();
@@ -126,7 +131,8 @@ public sealed class OpenAiNaturalLanguageQueryInterpreter
         }
 
         return MapToSemanticQuery(
-            dto);
+            dto,
+            context);
     }
 
     private ChatClient GetClient()
@@ -174,7 +180,7 @@ public sealed class OpenAiNaturalLanguageQueryInterpreter
         };
     }
 
-    private string BuildSystemPrompt()
+    private string BuildSystemPrompt(InteractionContext context)
     {
         StringBuilder builder =
             new();
@@ -214,8 +220,66 @@ public sealed class OpenAiNaturalLanguageQueryInterpreter
             Count  = count entities
             List   = list/describe entities
 
+            The user may refer to entities currently selected graphically
+            in AutoCAD.
+
+            Set useSelection=true only when the user's request explicitly
+            refers to the current graphical selection, for example:
+
+            - "these racks"
+            - "these objects"
+            - "this machine"
+            - "the selected racks"
+            - "of these"
+            - "from the selected elements"
+
+            Do not set useSelection=true merely because objects happen
+            to be selected.
+
+            When useSelection=false, the query applies to the whole
+            semantic CAD model.
+
+            Do not invent entity IDs.
+
+            The application will resolve the actual selected entity IDs
+            deterministically.
+
+            The current graphical selection is provided below.
+
             Semantic CAD model:
             """);
+
+        builder.AppendLine();
+        builder.AppendLine(
+            "Current graphical selection:");
+
+        if (!context.HasSelection)
+        {
+            builder.AppendLine(
+                "- No supported semantic entities are currently selected.");
+        }
+        else
+        {
+            foreach (
+                CadEntity entity
+                in context.SelectedEntities)
+            {
+                string properties =
+                    string.Join(
+                        ", ",
+                        entity.Properties.Select(
+                            property =>
+                                $"{property.Key}={property.Value.Value}"));
+
+                builder.AppendLine(
+                    $"- {entity.Type}: {entity.Name}" +
+                    (
+                        string.IsNullOrWhiteSpace(properties)
+                            ? string.Empty
+                            : $" ({properties})"
+                    ));
+            }
+        }
 
         foreach (
             EntityMappingRule entityMapping
@@ -329,6 +393,9 @@ public sealed class OpenAiNaturalLanguageQueryInterpreter
               "items": {
                 "type": "string"
               }
+            },
+            "useSelection": {
+              "type": "boolean"
             }
           },
           "required": [
@@ -336,7 +403,8 @@ public sealed class OpenAiNaturalLanguageQueryInterpreter
             "entityType",
             "filters",
             "hasFilters",
-            "unsupportedFilters"
+            "unsupportedFilters",
+            "useSelection"
           ],
           "additionalProperties": false
         }
@@ -344,8 +412,12 @@ public sealed class OpenAiNaturalLanguageQueryInterpreter
     }
 
     internal SemanticQuery MapToSemanticQuery(
-        AiSemanticQueryDto dto)
+        AiSemanticQueryDto dto,
+        InteractionContext context)
     {
+        ArgumentNullException.ThrowIfNull(dto);
+        ArgumentNullException.ThrowIfNull(context);
+
         if (!Enum.TryParse(
                 dto.Intent,
                 true,
@@ -449,6 +521,12 @@ public sealed class OpenAiNaturalLanguageQueryInterpreter
                 });
         }
 
+        IReadOnlyCollection<string> scopeEntityIds =
+            ResolveScopeEntityIds(
+                dto,
+                entityType,
+                context);
+
         return new SemanticQuery
         {
             Intent =
@@ -458,8 +536,52 @@ public sealed class OpenAiNaturalLanguageQueryInterpreter
                 entityType,
 
             Filters =
-                filters
+                filters,
+
+            ScopeEntityIds =
+                scopeEntityIds
         };
+    }
+
+    private static IReadOnlyCollection<string> ResolveScopeEntityIds(
+        AiSemanticQueryDto dto,
+        SemanticEntityType entityType,
+        InteractionContext context)
+    {
+        if (!dto.UseSelection)
+        {
+            return [];
+        }
+
+        if (!context.HasSelection)
+        {
+            throw new InvalidOperationException(
+                "The query refers to the current AutoCAD selection, " +
+                "but no supported semantic entities are selected.");
+        }
+
+        CadEntity[] matchingSelectedEntities =
+            context.SelectedEntities
+                .Where(
+                    entity =>
+                        entity.Type ==
+                        entityType)
+                .ToArray();
+
+        if (matchingSelectedEntities.Length == 0)
+        {
+            throw new InvalidOperationException(
+                $"The query refers to selected '{entityType}' entities, " +
+                "but the current AutoCAD selection contains none.");
+        }
+
+        return matchingSelectedEntities
+            .Select(
+                entity =>
+                    entity.Id)
+            .Distinct(
+                StringComparer.OrdinalIgnoreCase)
+            .ToArray();
     }
 
     private static object ConvertValue(
@@ -511,6 +633,9 @@ public sealed class OpenAiNaturalLanguageQueryInterpreter
         [JsonPropertyName("unsupportedFilters")]
         public string[] UnsupportedFilters { get; init; }
             = [];
+
+        [JsonPropertyName("useSelection")]
+        public required bool UseSelection { get; init; }
     }
 
     internal sealed class AiQueryFilterDto

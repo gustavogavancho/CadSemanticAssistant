@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using CadSemanticAssistant.Application.Interaction;
+using CadSemanticAssistant.Application.NaturalLanguage;
 using CadSemanticAssistant.Application.Queries;
 using CadSemanticAssistant.Application.Queries.Validation;
 using CadSemanticAssistant.Application.Selection;
@@ -8,7 +10,6 @@ using CadSemanticAssistant.Application.Semantics.Configuration;
 using CadSemanticAssistant.Domain.Models;
 using CadSemanticAssistant.Domain.Queries;
 using CadSemanticAssistant.Domain.Semantics;
-using CadSemanticAssistant.Infrastructure.AI.OpenAI.NaturalLanguage;
 
 namespace CadSemanticAssistant.Presentation.Wpf.ViewModels;
 
@@ -16,6 +17,9 @@ public sealed class SemanticQueryPaletteViewModel : ObservableObject
 {
     private readonly ISemanticQuerySession _querySession;
     private readonly SemanticMappingConfiguration _configuration;
+    private readonly IInteractionContextProvider _interactionContextProvider;
+
+    private IReadOnlyCollection<string> _scopeEntityIds = [];
 
     private SemanticEntityType _selectedEntityType;
 
@@ -35,7 +39,8 @@ public sealed class SemanticQueryPaletteViewModel : ObservableObject
         ISemanticQuerySession querySession,
         SemanticMappingConfiguration configuration,
         INaturalLanguageQueryInterpreter naturalLanguageQueryInterpreter,
-        ISemanticQueryValidator queryValidator)
+        ISemanticQueryValidator queryValidator,
+        IInteractionContextProvider interactionContextProvider)
     {
         _querySession =
             querySession;
@@ -47,6 +52,9 @@ public sealed class SemanticQueryPaletteViewModel : ObservableObject
             naturalLanguageQueryInterpreter;
 
         _queryValidator = queryValidator;
+
+        _interactionContextProvider =
+            interactionContextProvider;
 
         EntityTypes =
             new ObservableCollection<SemanticEntityType>(
@@ -141,6 +149,13 @@ public sealed class SemanticQueryPaletteViewModel : ObservableObject
     }
 
     public int ResultCount => Results.Count;
+
+    public int ScopeEntityCount => _scopeEntityIds.Count;
+
+    public string ScopeText =>
+        _scopeEntityIds.Count == 0
+            ? "Scope: entire drawing"
+            : $"Scope: {_scopeEntityIds.Count} selected entity(s)";
 
     public RelayCommand AddFilterCommand { get; }
 
@@ -280,7 +295,9 @@ public sealed class SemanticQueryPaletteViewModel : ObservableObject
 
             EntityType = SelectedEntityType,
 
-            Filters = queryFilters
+            Filters = queryFilters,
+
+            ScopeEntityIds = _scopeEntityIds
         };
     }
 
@@ -405,12 +422,20 @@ public sealed class SemanticQueryPaletteViewModel : ObservableObject
                 true;
 
             StatusText =
+                "Reading AutoCAD context...";
+
+            InteractionContext context =
+                _interactionContextProvider
+                    .GetCurrentContext();
+
+            StatusText =
                 "Interpreting query...";
 
             SemanticQuery query =
-    await _naturalLanguageQueryInterpreter
-        .InterpretAsync(
-            NaturalLanguageText);
+                await _naturalLanguageQueryInterpreter
+                    .InterpretAsync(
+                        NaturalLanguageText,
+                        context);
 
             SemanticQueryValidationResult validationResult =
                 _queryValidator.Validate(
@@ -425,10 +450,15 @@ public sealed class SemanticQueryPaletteViewModel : ObservableObject
             ApplySemanticQuery(
                 query);
 
+            string scopeText =
+                query.ScopeEntityIds.Count == 0
+                    ? "whole drawing"
+                    : $"{query.ScopeEntityIds.Count} selected entity(s)";
+
             StatusText =
                 $"Interpreted {query.EntityType} query " +
                 $"with {query.Filters.Count} filter(s). " +
-                "Review it and press Execute query.";
+                $"Scope: {scopeText}. Review it and press Execute query.";
         }
         catch (Exception exception)
         {
@@ -443,10 +473,19 @@ public sealed class SemanticQueryPaletteViewModel : ObservableObject
     }
 
     private void ApplySemanticQuery(
-    SemanticQuery query)
+        SemanticQuery query)
     {
         SelectedEntityType =
             query.EntityType;
+
+        _scopeEntityIds =
+            query.ScopeEntityIds.ToArray();
+
+        OnPropertyChanged(
+            nameof(ScopeEntityCount));
+
+        OnPropertyChanged(
+            nameof(ScopeText));
 
         Filters.Clear();
 

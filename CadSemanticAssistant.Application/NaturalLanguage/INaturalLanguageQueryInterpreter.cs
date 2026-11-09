@@ -1,8 +1,12 @@
+using CadSemanticAssistant.Application.Interaction;
 using CadSemanticAssistant.Domain.Queries;
 
-namespace CadSemanticAssistant.Infrastructure.AI.OpenAI.NaturalLanguage;
+namespace CadSemanticAssistant.Application.NaturalLanguage;
 
 public interface INaturalLanguageQueryInterpreter
 {
-    public Task<SemanticQuery> InterpretAsync(string text, CancellationToken cancellationToken = default);
+    public Task<SemanticQuery> InterpretAsync(
+        string text,
+        InteractionContext context,
+        CancellationToken cancellationToken = default);
 }

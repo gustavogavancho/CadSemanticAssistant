@@ -100,6 +100,33 @@ public sealed class SemanticQueryEngineTests
     }
 
     [Fact]
+    public void Execute_ScopedRackQuery_ShouldReturnOnlyMatchingScopedEntities()
+    {
+        SemanticQuery query = new()
+        {
+            Intent = QueryIntent.Select,
+            EntityType = SemanticEntityType.Rack,
+            Filters =
+            [
+                new QueryFilter
+                {
+                    Property = "height",
+                    Operator = QueryOperator.GreaterThan,
+                    Value = 10000d
+                }
+            ],
+            ScopeEntityIds = ["1", "2", "5"]
+        };
+
+        SemanticQueryResult result = _sut.Execute(query, _entities);
+
+        Assert.Equal(2, result.Count);
+        Assert.Equal(
+            new[] { "1", "5" },
+            result.Entities.Select(entity => entity.Id).OrderBy(id => id));
+    }
+
+    [Fact]
     public void Execute_RacksFilteredByCapacity_ShouldReturnExpectedCount()
     {
         SemanticQuery query = new()

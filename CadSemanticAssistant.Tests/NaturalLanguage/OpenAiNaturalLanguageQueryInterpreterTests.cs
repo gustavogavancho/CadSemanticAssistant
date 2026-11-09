@@ -1,7 +1,9 @@
 using System.Text.Json;
 
+using CadSemanticAssistant.Application.Interaction;
 using CadSemanticAssistant.Application.Semantics.Configuration;
 using CadSemanticAssistant.Application.Semantics;
+using CadSemanticAssistant.Domain.Models;
 using CadSemanticAssistant.Domain.Queries;
 using CadSemanticAssistant.Domain.Semantics;
 using CadSemanticAssistant.Infrastructure.AI.OpenAI.NaturalLanguage;
@@ -69,11 +71,12 @@ public sealed class OpenAiNaturalLanguageQueryInterpreterTests
                     Value = "20"
                 }
             ],
-            UnsupportedFilters = []
+            UnsupportedFilters = [],
+            UseSelection = false
         };
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
-            () => interpreter.MapToSemanticQuery(dto));
+            () => interpreter.MapToSemanticQuery(dto, new InteractionContext()));
 
         Assert.Equal(
             "Property 'capacity' is not valid for entity 'Machine'.",
@@ -92,11 +95,12 @@ public sealed class OpenAiNaturalLanguageQueryInterpreterTests
             EntityType = "Rack",
             HasFilters = true,
             Filters = [],
-            UnsupportedFilters = ["weight"]
+            UnsupportedFilters = ["weight"],
+            UseSelection = false
         };
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
-            () => interpreter.MapToSemanticQuery(dto));
+            () => interpreter.MapToSemanticQuery(dto, new InteractionContext()));
 
         Assert.Equal(
             "Unsupported filter property or properties: weight.",
@@ -115,11 +119,12 @@ public sealed class OpenAiNaturalLanguageQueryInterpreterTests
             EntityType = "Rack",
             HasFilters = true,
             Filters = [],
-            UnsupportedFilters = []
+            UnsupportedFilters = [],
+            UseSelection = false
         };
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
-            () => interpreter.MapToSemanticQuery(dto));
+            () => interpreter.MapToSemanticQuery(dto, new InteractionContext()));
 
         Assert.Equal(
             "The request contains filters, but none could be mapped to supported properties.",
@@ -143,6 +148,71 @@ public sealed class OpenAiNaturalLanguageQueryInterpreterTests
 
         Assert.Contains("hasFilters", required);
         Assert.Contains("unsupportedFilters", required);
+        Assert.Contains("useSelection", required);
+    }
+
+    [Fact]
+    public void MapToSemanticQuery_UseSelection_ShouldScopeToMatchingSelectedEntityIds()
+    {
+        OpenAiNaturalLanguageQueryInterpreter interpreter =
+            CreateRackInterpreter();
+
+        OpenAiNaturalLanguageQueryInterpreter.AiSemanticQueryDto dto = new()
+        {
+            Intent = "Select",
+            EntityType = "Rack",
+            HasFilters = false,
+            Filters = [],
+            UnsupportedFilters = [],
+            UseSelection = true
+        };
+
+        InteractionContext context = new()
+        {
+            SelectedEntities =
+            [
+                CreateEntity("rack-1", SemanticEntityType.Rack),
+                CreateEntity("rack-2", SemanticEntityType.Rack),
+                CreateEntity("machine-1", SemanticEntityType.Machine)
+            ]
+        };
+
+        SemanticQuery query =
+            interpreter.MapToSemanticQuery(dto, context);
+
+        Assert.Equal(
+            new[] { "rack-1", "rack-2" },
+            query.ScopeEntityIds);
+    }
+
+    [Fact]
+    public void MapToSemanticQuery_UseSelectionWithoutMatchingEntities_ShouldThrow()
+    {
+        OpenAiNaturalLanguageQueryInterpreter interpreter =
+            CreateRackInterpreter();
+
+        OpenAiNaturalLanguageQueryInterpreter.AiSemanticQueryDto dto = new()
+        {
+            Intent = "Select",
+            EntityType = "Rack",
+            HasFilters = false,
+            Filters = [],
+            UnsupportedFilters = [],
+            UseSelection = true
+        };
+
+        InteractionContext context = new()
+        {
+            SelectedEntities =
+            [
+                CreateEntity("machine-1", SemanticEntityType.Machine)
+            ]
+        };
+
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
+            () => interpreter.MapToSemanticQuery(dto, context));
+
+        Assert.Contains("contains none", exception.Message);
     }
 
     [Fact]
@@ -200,5 +270,21 @@ public sealed class OpenAiNaturalLanguageQueryInterpreterTests
             null,
             null,
             configuration);
+    }
+
+    private static CadEntity CreateEntity(
+        string id,
+        SemanticEntityType entityType)
+    {
+        return new CadEntity
+        {
+            Id = id,
+            Type = entityType,
+            Name = id,
+            RawName = id,
+            Layer = "TEST",
+            Position = new CadPoint(0, 0, 0),
+            RotationRadians = 0
+        };
     }
 }

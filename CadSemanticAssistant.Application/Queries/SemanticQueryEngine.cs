@@ -5,59 +5,126 @@ using CadSemanticAssistant.Domain.Semantics;
 
 namespace CadSemanticAssistant.Application.Queries;
 
-public sealed class SemanticQueryEngine : ISemanticQueryEngine
+public sealed class SemanticQueryEngine
+    : ISemanticQueryEngine
 {
-    public SemanticQueryResult Execute(SemanticQuery query, IReadOnlyCollection<CadEntity> entities)
+    public SemanticQueryResult Execute(
+        SemanticQuery query,
+        IReadOnlyCollection<CadEntity> entities)
     {
-        IEnumerable<CadEntity> queryable = entities;
+        IEnumerable<CadEntity> queryable =
+            entities;
 
-        queryable = queryable.Where(entity => entity.Type == query.EntityType);
-
-        foreach (QueryFilter filter in query.Filters)
+        if (query.ScopeEntityIds.Count > 0)
         {
-            queryable = queryable.Where(entity => MatchesFilter(entity, filter));
+            HashSet<string> scopeEntityIds =
+                new(
+                    query.ScopeEntityIds,
+                    StringComparer.OrdinalIgnoreCase);
+
+            queryable =
+                queryable.Where(
+                    entity =>
+                        scopeEntityIds.Contains(
+                            entity.Id));
         }
 
-        IReadOnlyCollection<CadEntity> results = queryable.ToArray();
+        queryable =
+            queryable.Where(
+                entity =>
+                    entity.Type ==
+                    query.EntityType);
+
+        foreach (
+            QueryFilter filter
+            in query.Filters)
+        {
+            queryable =
+                queryable.Where(
+                    entity =>
+                        MatchesFilter(
+                            entity,
+                            filter));
+        }
+
+        IReadOnlyCollection<CadEntity> results =
+            queryable.ToArray();
 
         return new SemanticQueryResult
         {
-            Query = query,
-            Entities = results
+            Query =
+                query,
+
+            Entities =
+                results
         };
     }
 
-    private static bool MatchesFilter(CadEntity entity, QueryFilter filter)
+    private static bool MatchesFilter(
+        CadEntity entity,
+        QueryFilter filter)
     {
-        bool propertyFound = entity.Properties.TryGetValue(filter.Property, out SemanticPropertyValue? property);
+        bool propertyFound =
+            entity.Properties.TryGetValue(
+                filter.Property,
+                out SemanticPropertyValue? property);
 
-        if (!propertyFound || property is null)
+        if (!propertyFound ||
+            property is null)
         {
             return false;
         }
 
-        return Compare(property.Value, filter.Operator, filter.Value);
+        return Compare(
+            property.Value,
+            filter.Operator,
+            filter.Value);
     }
 
-    private static bool Compare(object propertyValue, QueryOperator queryOperator, object queryValue)
+    private static bool Compare(
+        object propertyValue,
+        QueryOperator queryOperator,
+        object queryValue)
     {
         return queryOperator switch
         {
-            QueryOperator.Equals => AreEqual(propertyValue, queryValue),
+            QueryOperator.Equals =>
+                AreEqual(
+                    propertyValue,
+                    queryValue),
 
-            QueryOperator.NotEquals => !AreEqual(propertyValue, queryValue),
+            QueryOperator.NotEquals =>
+                !AreEqual(
+                    propertyValue,
+                    queryValue),
 
-            QueryOperator.GreaterThan => CompareValues(propertyValue, queryValue) > 0,
+            QueryOperator.GreaterThan =>
+                CompareValues(
+                    propertyValue,
+                    queryValue) > 0,
 
-            QueryOperator.GreaterThanOrEqual => CompareValues(propertyValue, queryValue) >= 0,
+            QueryOperator.GreaterThanOrEqual =>
+                CompareValues(
+                    propertyValue,
+                    queryValue) >= 0,
 
-            QueryOperator.LessThan => CompareValues(propertyValue, queryValue) < 0,
+            QueryOperator.LessThan =>
+                CompareValues(
+                    propertyValue,
+                    queryValue) < 0,
 
-            QueryOperator.LessThanOrEqual => CompareValues(propertyValue, queryValue) <= 0,
+            QueryOperator.LessThanOrEqual =>
+                CompareValues(
+                    propertyValue,
+                    queryValue) <= 0,
 
-            QueryOperator.Contains => Contains(propertyValue, queryValue),
+            QueryOperator.Contains =>
+                Contains(
+                    propertyValue,
+                    queryValue),
 
-            _ => false
+            _ =>
+                false
         };
     }
 
@@ -73,16 +140,19 @@ public sealed class SemanticQueryEngine : ISemanticQueryEngine
                 right,
                 out decimal rightNumber))
         {
-            return leftNumber == rightNumber;
+            return leftNumber ==
+                   rightNumber;
         }
 
         return string.Equals(
             Convert.ToString(
                 left,
                 CultureInfo.InvariantCulture),
+
             Convert.ToString(
                 right,
                 CultureInfo.InvariantCulture),
+
             StringComparison.OrdinalIgnoreCase);
     }
 

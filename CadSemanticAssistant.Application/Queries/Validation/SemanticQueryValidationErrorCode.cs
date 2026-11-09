@@ -10,5 +10,7 @@ public enum SemanticQueryValidationErrorCode
 
     InvalidOperator,
 
-    InvalidValue
+    InvalidValue,
+
+    InvalidScope
 }
