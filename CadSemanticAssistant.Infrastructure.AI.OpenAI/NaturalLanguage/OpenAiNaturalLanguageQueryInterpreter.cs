@@ -24,6 +24,20 @@ public sealed class OpenAiNaturalLanguageQueryInterpreter
 
     private ChatClient? _client;
 
+    internal enum AiSelectionUsage
+    {
+        None,
+        Scope,
+        SpatialReference
+    }
+
+    internal enum AiSpatialRelation
+    {
+        None,
+        WithinDistance,
+        Nearest
+    }
+
     public OpenAiNaturalLanguageQueryInterpreter(
         string? apiKey,
         string? model,
@@ -220,31 +234,44 @@ public sealed class OpenAiNaturalLanguageQueryInterpreter
             Count  = count entities
             List   = list/describe entities
 
-            The user may refer to entities currently selected graphically
-            in AutoCAD.
+            The AutoCAD selection may have three roles:
 
-            Set useSelection=true only when the user's request explicitly
-            refers to the current graphical selection, for example:
+            selectionUsage="None": the request targets the whole drawing,
+            even when some objects happen to be selected.
 
-            - "these racks"
-            - "these objects"
-            - "this machine"
-            - "the selected racks"
-            - "of these"
-            - "from the selected elements"
+            selectionUsage="Scope": the selected entities are the candidates.
+            Examples: "de estos racks", "among the selected elements",
+            "which of these are SC2?"
 
-            Do not set useSelection=true merely because objects happen
-            to be selected.
+            selectionUsage="SpatialReference": the single selected entity
+            is the reference, not the set of candidates.
+            Examples: "racks within 10 metres of this machine",
+            "the nearest rack to the selected machine".
 
-            When useSelection=false, the query applies to the whole
-            semantic CAD model.
+            Set hasSpatialConstraint=true for EVERY user-requested spatial
+            requirement, even if the requested relation is unsupported.
+            Do not omit, replace or approximate a spatial requirement.
+            If spatial relations are unsupported or ambiguous, report them
+            in unsupportedSpatialConstraints.
 
-            Do not invent entity IDs.
+            Supported spatial relations:
+            WithinDistance requires an explicit numeric distance. Convert
+            distance to millimetres (5 m => 5000, 250 cm => 2500).
+            The application will measure distances between insertion points
+            in the current test drawing, which uses millimetres.
+            Nearest is used only when the user asks for the single nearest
+            or closest entity; spatialDistance MUST be null.
 
-            The application will resolve the actual selected entity IDs
-            deterministically.
+            Unsupported v0.9 examples: "near this machine" without a
+            distance, "inside this area", "left of this machine",
+            "between two machines", "intersects this rack".
 
-            The current graphical selection is provided below.
+            Never invent handles, ObjectIds, IDs, coordinates or distances
+            measured from CAD geometry. The application resolves handles and
+            computes spatial results deterministically.
+
+            Selection does not imply selectionUsage="Scope" or
+            selectionUsage="SpatialReference" unless the request requires it.
 
             Semantic CAD model:
             """);
@@ -394,8 +421,23 @@ public sealed class OpenAiNaturalLanguageQueryInterpreter
                 "type": "string"
               }
             },
-            "useSelection": {
+            "selectionUsage": {
+              "type": "string",
+              "enum": ["None", "Scope", "SpatialReference"]
+            },
+            "hasSpatialConstraint": {
               "type": "boolean"
+            },
+            "spatialRelation": {
+              "type": "string",
+              "enum": ["None", "WithinDistance", "Nearest"]
+            },
+            "spatialDistance": {
+              "type": ["number", "null"]
+            },
+            "unsupportedSpatialConstraints": {
+              "type": "array",
+              "items": { "type": "string" }
             }
           },
           "required": [
@@ -404,7 +446,11 @@ public sealed class OpenAiNaturalLanguageQueryInterpreter
             "filters",
             "hasFilters",
             "unsupportedFilters",
-            "useSelection"
+            "selectionUsage",
+            "hasSpatialConstraint",
+            "spatialRelation",
+            "spatialDistance",
+            "unsupportedSpatialConstraints"
           ],
           "additionalProperties": false
         }
@@ -470,6 +516,24 @@ public sealed class OpenAiNaturalLanguageQueryInterpreter
                 "a filter request.");
         }
 
+        if (!Enum.TryParse(dto.SelectionUsage, true,
+                out AiSelectionUsage selectionUsage) ||
+            !Enum.IsDefined(selectionUsage))
+        {
+            throw new InvalidOperationException(
+                $"Unknown selection usage '{dto.SelectionUsage}'.");
+        }
+
+        if (!Enum.TryParse(dto.SpatialRelation, true,
+                out AiSpatialRelation spatialRelation) ||
+            !Enum.IsDefined(spatialRelation))
+        {
+            throw new InvalidOperationException(
+                $"Unknown spatial relation '{dto.SpatialRelation}'.");
+        }
+
+        ValidateSpatialInterpretation(dto, selectionUsage, spatialRelation);
+
         List<QueryFilter> filters =
             [];
 
@@ -521,11 +585,26 @@ public sealed class OpenAiNaturalLanguageQueryInterpreter
                 });
         }
 
-        IReadOnlyCollection<string> scopeEntityIds =
-            ResolveScopeEntityIds(
-                dto,
-                entityType,
-                context);
+        IReadOnlyCollection<string> scopeEntityIds = [];
+        SpatialFilter? spatialFilter = null;
+
+        switch (selectionUsage)
+        {
+            case AiSelectionUsage.None:
+                break;
+
+            case AiSelectionUsage.Scope:
+                scopeEntityIds = ResolveScopeEntityIds(entityType, context);
+                break;
+
+            case AiSelectionUsage.SpatialReference:
+                spatialFilter = ResolveSpatialFilter(dto, spatialRelation, context);
+                break;
+
+            default:
+                throw new InvalidOperationException(
+                    $"Unsupported selection usage '{selectionUsage}'.");
+        }
 
         return new SemanticQuery
         {
@@ -539,20 +618,17 @@ public sealed class OpenAiNaturalLanguageQueryInterpreter
                 filters,
 
             ScopeEntityIds =
-                scopeEntityIds
+                scopeEntityIds,
+
+            SpatialFilter =
+                spatialFilter
         };
     }
 
     private static IReadOnlyCollection<string> ResolveScopeEntityIds(
-        AiSemanticQueryDto dto,
         SemanticEntityType entityType,
         InteractionContext context)
     {
-        if (!dto.UseSelection)
-        {
-            return [];
-        }
-
         if (!context.HasSelection)
         {
             throw new InvalidOperationException(
@@ -582,6 +658,98 @@ public sealed class OpenAiNaturalLanguageQueryInterpreter
             .Distinct(
                 StringComparer.OrdinalIgnoreCase)
             .ToArray();
+    }
+
+    private static void ValidateSpatialInterpretation(
+        AiSemanticQueryDto dto,
+        AiSelectionUsage selectionUsage,
+        AiSpatialRelation spatialRelation)
+    {
+        if (dto.UnsupportedSpatialConstraints.Length > 0)
+        {
+            throw new InvalidOperationException(
+                "Unsupported spatial constraint or constraints: " +
+                $"{string.Join(", ", dto.UnsupportedSpatialConstraints)}.");
+        }
+
+        if (dto.HasSpatialConstraint)
+        {
+            if (selectionUsage != AiSelectionUsage.SpatialReference)
+            {
+                throw new InvalidOperationException(
+                    "A spatial request must use the graphical selection " +
+                    "as a spatial reference.");
+            }
+
+            if (spatialRelation == AiSpatialRelation.None)
+            {
+                throw new InvalidOperationException(
+                    "The request contains a spatial constraint, " +
+                    "but no supported spatial relation was returned.");
+            }
+
+            return;
+        }
+
+        if (selectionUsage == AiSelectionUsage.SpatialReference ||
+            spatialRelation != AiSpatialRelation.None ||
+            dto.SpatialDistance is not null)
+        {
+            throw new InvalidOperationException(
+                "Spatial data was returned without identifying a " +
+                "spatial request.");
+        }
+    }
+
+    private static SpatialFilter ResolveSpatialFilter(
+        AiSemanticQueryDto dto,
+        AiSpatialRelation relation,
+        InteractionContext context)
+    {
+        if (context.SelectedEntities.Count != 1)
+        {
+            throw new InvalidOperationException(
+                "Spatial queries currently require exactly one " +
+                "selected semantic reference entity.");
+        }
+
+        CadEntity selected = context.SelectedEntities.Single();
+
+        switch (relation)
+        {
+            case AiSpatialRelation.WithinDistance:
+                if (dto.SpatialDistance is not double distance ||
+                    !double.IsFinite(distance) || distance <= 0)
+                {
+                    throw new InvalidOperationException(
+                        "WithinDistance requires a finite, positive distance.");
+                }
+
+                return new SpatialFilter
+                {
+                    Relation = SpatialRelation.WithinDistance,
+                    ReferenceEntityIds = [selected.Id],
+                    MaxDistance = distance
+                };
+
+            case AiSpatialRelation.Nearest:
+                if (dto.SpatialDistance is not null)
+                {
+                    throw new InvalidOperationException(
+                        "Nearest must not define a spatial distance.");
+                }
+
+                return new SpatialFilter
+                {
+                    Relation = SpatialRelation.Nearest,
+                    ReferenceEntityIds = [selected.Id],
+                    MaxDistance = null
+                };
+
+            default:
+                throw new InvalidOperationException(
+                    $"Spatial relation '{relation}' is not supported.");
+        }
     }
 
     private static object ConvertValue(
@@ -634,8 +802,23 @@ public sealed class OpenAiNaturalLanguageQueryInterpreter
         public string[] UnsupportedFilters { get; init; }
             = [];
 
-        [JsonPropertyName("useSelection")]
-        public required bool UseSelection { get; init; }
+        [JsonPropertyName("selectionUsage")]
+        public string SelectionUsage { get; init; }
+            = nameof(AiSelectionUsage.None);
+
+        [JsonPropertyName("hasSpatialConstraint")]
+        public bool HasSpatialConstraint { get; init; }
+
+        [JsonPropertyName("spatialRelation")]
+        public string SpatialRelation { get; init; }
+            = nameof(AiSpatialRelation.None);
+
+        [JsonPropertyName("spatialDistance")]
+        public double? SpatialDistance { get; init; }
+
+        [JsonPropertyName("unsupportedSpatialConstraints")]
+        public string[] UnsupportedSpatialConstraints { get; init; }
+            = [];
     }
 
     internal sealed class AiQueryFilterDto

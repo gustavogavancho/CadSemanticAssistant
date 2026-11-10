@@ -20,6 +20,7 @@ public sealed class SemanticQueryPaletteViewModel : ObservableObject
     private readonly IInteractionContextProvider _interactionContextProvider;
 
     private IReadOnlyCollection<string> _scopeEntityIds = [];
+    private SpatialFilter? _spatialFilter;
 
     private SemanticEntityType _selectedEntityType;
 
@@ -156,6 +157,17 @@ public sealed class SemanticQueryPaletteViewModel : ObservableObject
         _scopeEntityIds.Count == 0
             ? "Scope: entire drawing"
             : $"Scope: {_scopeEntityIds.Count} selected entity(s)";
+
+    public string SpatialContextText => _spatialFilter?.Relation switch
+    {
+        null => "Spatial relation: none",
+        SpatialRelation.WithinDistance =>
+            $"Spatial relation: within {_spatialFilter.MaxDistance:0.##} mm " +
+            "of selected reference",
+        SpatialRelation.Nearest =>
+            "Spatial relation: nearest to selected reference",
+        _ => "Spatial relation: unknown"
+    };
 
     public RelayCommand AddFilterCommand { get; }
 
@@ -297,7 +309,9 @@ public sealed class SemanticQueryPaletteViewModel : ObservableObject
 
             Filters = queryFilters,
 
-            ScopeEntityIds = _scopeEntityIds
+            ScopeEntityIds = _scopeEntityIds,
+
+            SpatialFilter = _spatialFilter
         };
     }
 
@@ -455,10 +469,14 @@ public sealed class SemanticQueryPaletteViewModel : ObservableObject
                     ? "whole drawing"
                     : $"{query.ScopeEntityIds.Count} selected entity(s)";
 
+            string spatialText = query.SpatialFilter?.Relation.ToString()
+                ?? "none";
+
             StatusText =
                 $"Interpreted {query.EntityType} query " +
                 $"with {query.Filters.Count} filter(s). " +
-                $"Scope: {scopeText}. Review it and press Execute query.";
+                $"Scope: {scopeText}. Spatial relation: {spatialText}. " +
+                "Review it and press Execute query.";
         }
         catch (Exception exception)
         {
@@ -481,6 +499,9 @@ public sealed class SemanticQueryPaletteViewModel : ObservableObject
         _scopeEntityIds =
             query.ScopeEntityIds.ToArray();
 
+        _spatialFilter = query.SpatialFilter;
+
+        OnPropertyChanged(nameof(SpatialContextText));
         OnPropertyChanged(
             nameof(ScopeEntityCount));
 

@@ -12,5 +12,7 @@ public enum SemanticQueryValidationErrorCode
 
     InvalidValue,
 
-    InvalidScope
+    InvalidScope,
+
+    InvalidSpatialFilter
 }

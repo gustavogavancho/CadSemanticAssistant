@@ -195,6 +195,128 @@ public sealed class SemanticQueryEngineTests
         Assert.Equal(1, result.Count);
     }
 
+    [Fact]
+    public void Execute_WithinDistance_ReturnsOnlyNearbyRacks()
+    {
+        CadEntity machine = CreateSpatialEntity("M1", SemanticEntityType.Machine, 0, 0);
+        CadEntity near1 = CreateSpatialEntity("R1", SemanticEntityType.Rack, 3000, 0);
+        CadEntity near2 = CreateSpatialEntity("R2", SemanticEntityType.Rack, 7000, 0);
+        CadEntity far = CreateSpatialEntity("R3", SemanticEntityType.Rack, 12000, 0);
+        SemanticQuery query = new()
+        {
+            Intent = QueryIntent.Select,
+            EntityType = SemanticEntityType.Rack,
+            SpatialFilter = new SpatialFilter
+            {
+                Relation = SpatialRelation.WithinDistance,
+                ReferenceEntityIds = ["M1"],
+                MaxDistance = 8000
+            }
+        };
+        SemanticQueryResult result = _sut.Execute(query, [machine, near1, near2, far]);
+        Assert.Equal(new[] { "R1", "R2" },
+            result.Entities.Select(entity => entity.Id).OrderBy(id => id));
+    }
+
+    [Fact]
+    public void Execute_Nearest_ReturnsOneRack()
+    {
+        CadEntity machine = CreateSpatialEntity("M1", SemanticEntityType.Machine, 0, 0);
+        CadEntity rack1 = CreateSpatialEntity("R1", SemanticEntityType.Rack, 9000, 0);
+        CadEntity rack2 = CreateSpatialEntity("R2", SemanticEntityType.Rack, 4000, 0);
+        SemanticQuery query = new()
+        {
+            Intent = QueryIntent.Select,
+            EntityType = SemanticEntityType.Rack,
+            SpatialFilter = new SpatialFilter
+            {
+                Relation = SpatialRelation.Nearest,
+                ReferenceEntityIds = ["M1"]
+            }
+        };
+        SemanticQueryResult result = _sut.Execute(query, [machine, rack1, rack2]);
+        Assert.Equal("R2", Assert.Single(result.Entities).Id);
+    }
+
+    [Fact]
+    public void Execute_NearestBreaksTiesById()
+    {
+        CadEntity machine = CreateSpatialEntity("M1", SemanticEntityType.Machine, 0, 0);
+        CadEntity rack2 = CreateSpatialEntity("R2", SemanticEntityType.Rack, -5000, 0);
+        CadEntity rack1 = CreateSpatialEntity("R1", SemanticEntityType.Rack, 5000, 0);
+        SemanticQuery query = new()
+        {
+            Intent = QueryIntent.Select,
+            EntityType = SemanticEntityType.Rack,
+            SpatialFilter = new SpatialFilter
+            {
+                Relation = SpatialRelation.Nearest,
+                ReferenceEntityIds = ["M1"]
+            }
+        };
+        SemanticQueryResult result = _sut.Execute(query, [machine, rack2, rack1]);
+        Assert.Equal("R1", Assert.Single(result.Entities).Id);
+    }
+
+    [Fact]
+    public void Execute_NearestExcludesTheReferenceItself()
+    {
+        CadEntity rack1 = CreateSpatialEntity("R1", SemanticEntityType.Rack, 0, 0);
+        CadEntity rack2 = CreateSpatialEntity("R2", SemanticEntityType.Rack, 2000, 0);
+        SemanticQuery query = new()
+        {
+            Intent = QueryIntent.Select,
+            EntityType = SemanticEntityType.Rack,
+            SpatialFilter = new SpatialFilter
+            {
+                Relation = SpatialRelation.Nearest,
+                ReferenceEntityIds = ["R1"]
+            }
+        };
+        SemanticQueryResult result = _sut.Execute(query, [rack1, rack2]);
+        Assert.Equal("R2", Assert.Single(result.Entities).Id);
+    }
+
+    [Fact]
+    public void Execute_SpatialFilterComposesWithScope()
+    {
+        CadEntity machine = CreateSpatialEntity("M1", SemanticEntityType.Machine, 0, 0);
+        CadEntity rack1 = CreateSpatialEntity("R1", SemanticEntityType.Rack, 2000, 0);
+        CadEntity rack2 = CreateSpatialEntity("R2", SemanticEntityType.Rack, 3000, 0);
+        SemanticQuery query = new()
+        {
+            Intent = QueryIntent.Select,
+            EntityType = SemanticEntityType.Rack,
+            ScopeEntityIds = ["R2"],
+            SpatialFilter = new SpatialFilter
+            {
+                Relation = SpatialRelation.WithinDistance,
+                ReferenceEntityIds = ["M1"],
+                MaxDistance = 5000
+            }
+        };
+        SemanticQueryResult result = _sut.Execute(query, [machine, rack1, rack2]);
+        Assert.Equal("R2", Assert.Single(result.Entities).Id);
+    }
+
+    private static CadEntity CreateSpatialEntity(
+        string id,
+        SemanticEntityType type,
+        double x,
+        double y)
+    {
+        return new CadEntity
+        {
+            Id = id,
+            Type = type,
+            Name = id,
+            RawName = id,
+            Layer = "TEST",
+            Position = new CadPoint(x, y, 0),
+            RotationRadians = 0
+        };
+    }
+
     private static IReadOnlyCollection<CadEntity> CreateEntities()
     {
         return

@@ -119,6 +119,12 @@
         Text="{Binding ScopeText}" />
 
             <TextBlock
+                Margin="0,0,0,5"
+                FontSize="10"
+                Foreground="{StaticResource DarkMuted}"
+                Text="{Binding SpatialContextText}" />
+
+            <TextBlock
         Margin="0,6,0,4"
         Text="Entity type" />
 

@@ -16,6 +16,79 @@ public sealed class SemanticQueryValidatorTests
     }
 
     [Fact]
+    public void Validate_ValidWithinDistance_ShouldBeValid()
+    {
+        SemanticQuery query = new()
+        {
+            Intent = QueryIntent.Select,
+            EntityType = SemanticEntityType.Rack,
+            SpatialFilter = new SpatialFilter
+            {
+                Relation = SpatialRelation.WithinDistance,
+                ReferenceEntityIds = ["M1"],
+                MaxDistance = 10000
+            }
+        };
+        Assert.True(_validator.Validate(query).IsValid);
+    }
+
+    [Fact]
+    public void Validate_WithinDistanceWithoutReference_ShouldFail()
+    {
+        SemanticQuery query = new()
+        {
+            Intent = QueryIntent.Select,
+            EntityType = SemanticEntityType.Rack,
+            SpatialFilter = new SpatialFilter
+            {
+                Relation = SpatialRelation.WithinDistance,
+                MaxDistance = 10000
+            }
+        };
+        Assert.Contains(_validator.Validate(query).Errors,
+            error => error.Code == SemanticQueryValidationErrorCode.InvalidSpatialFilter);
+    }
+
+    [Theory]
+    [InlineData(0d)]
+    [InlineData(-1d)]
+    [InlineData(double.NaN)]
+    [InlineData(double.PositiveInfinity)]
+    public void Validate_WithinDistanceInvalidDistance_ShouldFail(double distance)
+    {
+        SemanticQuery query = new()
+        {
+            Intent = QueryIntent.Select,
+            EntityType = SemanticEntityType.Rack,
+            SpatialFilter = new SpatialFilter
+            {
+                Relation = SpatialRelation.WithinDistance,
+                ReferenceEntityIds = ["M1"],
+                MaxDistance = distance
+            }
+        };
+        Assert.Contains(_validator.Validate(query).Errors,
+            error => error.Code == SemanticQueryValidationErrorCode.InvalidSpatialFilter);
+    }
+
+    [Fact]
+    public void Validate_NearestWithMaxDistance_ShouldFail()
+    {
+        SemanticQuery query = new()
+        {
+            Intent = QueryIntent.Select,
+            EntityType = SemanticEntityType.Rack,
+            SpatialFilter = new SpatialFilter
+            {
+                Relation = SpatialRelation.Nearest,
+                ReferenceEntityIds = ["M1"],
+                MaxDistance = 5000
+            }
+        };
+        Assert.False(_validator.Validate(query).IsValid);
+    }
+
+    [Fact]
     public void Validate_ValidRackQuery_ShouldBeValid()
     {
         SemanticQuery query = new()

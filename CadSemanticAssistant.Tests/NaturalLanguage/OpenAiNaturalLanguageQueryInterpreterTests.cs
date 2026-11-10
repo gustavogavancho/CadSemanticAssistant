@@ -72,7 +72,7 @@ public sealed class OpenAiNaturalLanguageQueryInterpreterTests
                 }
             ],
             UnsupportedFilters = [],
-            UseSelection = false
+            SelectionUsage = "None"
         };
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
@@ -96,7 +96,7 @@ public sealed class OpenAiNaturalLanguageQueryInterpreterTests
             HasFilters = true,
             Filters = [],
             UnsupportedFilters = ["weight"],
-            UseSelection = false
+            SelectionUsage = "None"
         };
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
@@ -120,7 +120,7 @@ public sealed class OpenAiNaturalLanguageQueryInterpreterTests
             HasFilters = true,
             Filters = [],
             UnsupportedFilters = [],
-            UseSelection = false
+            SelectionUsage = "None"
         };
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
@@ -148,7 +148,12 @@ public sealed class OpenAiNaturalLanguageQueryInterpreterTests
 
         Assert.Contains("hasFilters", required);
         Assert.Contains("unsupportedFilters", required);
-        Assert.Contains("useSelection", required);
+        Assert.Contains("selectionUsage", required);
+        Assert.Contains("hasSpatialConstraint", required);
+        Assert.Contains("spatialRelation", required);
+        Assert.Contains("spatialDistance", required);
+        Assert.Contains("unsupportedSpatialConstraints", required);
+        Assert.DoesNotContain("useSelection", required);
     }
 
     [Fact]
@@ -164,7 +169,7 @@ public sealed class OpenAiNaturalLanguageQueryInterpreterTests
             HasFilters = false,
             Filters = [],
             UnsupportedFilters = [],
-            UseSelection = true
+            SelectionUsage = "Scope"
         };
 
         InteractionContext context = new()
@@ -198,7 +203,7 @@ public sealed class OpenAiNaturalLanguageQueryInterpreterTests
             HasFilters = false,
             Filters = [],
             UnsupportedFilters = [],
-            UseSelection = true
+            SelectionUsage = "Scope"
         };
 
         InteractionContext context = new()
@@ -242,6 +247,178 @@ public sealed class OpenAiNaturalLanguageQueryInterpreterTests
     {
         Assert.Throws<InvalidOperationException>(
             () => OpenAiNaturalLanguageQueryInterpreter.ParseReasoningEffort("minimal"));
+    }
+
+    [Fact]
+    public void MapToSemanticQuery_WithinDistance_UsesSelectedMachineAsReference()
+    {
+        OpenAiNaturalLanguageQueryInterpreter interpreter = CreateRackInterpreter();
+        OpenAiNaturalLanguageQueryInterpreter.AiSemanticQueryDto dto = new()
+        {
+            Intent = "Select",
+            EntityType = "Rack",
+            HasFilters = false,
+            Filters = [],
+            UnsupportedFilters = [],
+            SelectionUsage = "SpatialReference",
+            HasSpatialConstraint = true,
+            SpatialRelation = "WithinDistance",
+            SpatialDistance = 10000,
+            UnsupportedSpatialConstraints = []
+        };
+
+        InteractionContext context = new()
+        {
+            SelectedEntities = [CreateEntity("machine-1", SemanticEntityType.Machine)]
+        };
+
+        SemanticQuery query = interpreter.MapToSemanticQuery(dto, context);
+        Assert.Empty(query.ScopeEntityIds);
+        Assert.NotNull(query.SpatialFilter);
+        Assert.Equal(SpatialRelation.WithinDistance, query.SpatialFilter.Relation);
+        Assert.Equal(10000d, query.SpatialFilter.MaxDistance);
+        Assert.Equal(new[] { "machine-1" }, query.SpatialFilter.ReferenceEntityIds);
+    }
+
+    [Fact]
+    public void MapToSemanticQuery_Nearest_UsesSelectedEntity()
+    {
+        OpenAiNaturalLanguageQueryInterpreter interpreter = CreateRackInterpreter();
+        OpenAiNaturalLanguageQueryInterpreter.AiSemanticQueryDto dto = new()
+        {
+            Intent = "Select",
+            EntityType = "Rack",
+            HasFilters = false,
+            SelectionUsage = "SpatialReference",
+            HasSpatialConstraint = true,
+            SpatialRelation = "Nearest"
+        };
+
+        InteractionContext context = new()
+        {
+            SelectedEntities = [CreateEntity("machine-1", SemanticEntityType.Machine)]
+        };
+
+        SemanticQuery query = interpreter.MapToSemanticQuery(dto, context);
+        Assert.Equal(SpatialRelation.Nearest, query.SpatialFilter?.Relation);
+        Assert.Null(query.SpatialFilter?.MaxDistance);
+    }
+
+    [Fact]
+    public void MapToSemanticQuery_RequestedSpatialConstraintWithMissingRelation_ShouldThrow()
+    {
+        OpenAiNaturalLanguageQueryInterpreter interpreter = CreateRackInterpreter();
+        OpenAiNaturalLanguageQueryInterpreter.AiSemanticQueryDto dto = new()
+        {
+            Intent = "Select",
+            EntityType = "Rack",
+            HasFilters = false,
+            SelectionUsage = "SpatialReference",
+            HasSpatialConstraint = true,
+            SpatialRelation = "None"
+        };
+        InvalidOperationException error = Assert.Throws<InvalidOperationException>(
+            () => interpreter.MapToSemanticQuery(dto, new InteractionContext()));
+        Assert.Contains("no supported spatial relation", error.Message);
+    }
+
+    [Fact]
+    public void MapToSemanticQuery_UnsupportedSpatialConstraint_ShouldThrow()
+    {
+        OpenAiNaturalLanguageQueryInterpreter interpreter = CreateRackInterpreter();
+        OpenAiNaturalLanguageQueryInterpreter.AiSemanticQueryDto dto = new()
+        {
+            Intent = "Select",
+            EntityType = "Rack",
+            HasFilters = false,
+            UnsupportedSpatialConstraints = ["inside selected zone"]
+        };
+        InvalidOperationException error = Assert.Throws<InvalidOperationException>(
+            () => interpreter.MapToSemanticQuery(dto, new InteractionContext()));
+        Assert.Contains("Unsupported spatial", error.Message);
+    }
+
+    [Fact]
+    public void MapToSemanticQuery_WithinDistanceWithoutSelection_ShouldThrow()
+    {
+        OpenAiNaturalLanguageQueryInterpreter interpreter = CreateRackInterpreter();
+        OpenAiNaturalLanguageQueryInterpreter.AiSemanticQueryDto dto = new()
+        {
+            Intent = "Select",
+            EntityType = "Rack",
+            HasFilters = false,
+            SelectionUsage = "SpatialReference",
+            HasSpatialConstraint = true,
+            SpatialRelation = "WithinDistance",
+            SpatialDistance = 10000
+        };
+        Assert.Throws<InvalidOperationException>(
+            () => interpreter.MapToSemanticQuery(dto, new InteractionContext()));
+    }
+
+    [Fact]
+    public void MapToSemanticQuery_WithinDistanceWithMultipleSelection_ShouldThrow()
+    {
+        OpenAiNaturalLanguageQueryInterpreter interpreter = CreateRackInterpreter();
+        OpenAiNaturalLanguageQueryInterpreter.AiSemanticQueryDto dto = new()
+        {
+            Intent = "Select",
+            EntityType = "Rack",
+            HasFilters = false,
+            SelectionUsage = "SpatialReference",
+            HasSpatialConstraint = true,
+            SpatialRelation = "WithinDistance",
+            SpatialDistance = 10000
+        };
+        InteractionContext context = new()
+        {
+            SelectedEntities =
+            [
+                CreateEntity("m1", SemanticEntityType.Machine),
+                CreateEntity("m2", SemanticEntityType.Machine)
+            ]
+        };
+        Assert.Throws<InvalidOperationException>(
+            () => interpreter.MapToSemanticQuery(dto, context));
+    }
+
+    [Fact]
+    public void MapToSemanticQuery_NearestWithDistance_ShouldThrow()
+    {
+        OpenAiNaturalLanguageQueryInterpreter interpreter = CreateRackInterpreter();
+        OpenAiNaturalLanguageQueryInterpreter.AiSemanticQueryDto dto = new()
+        {
+            Intent = "Select",
+            EntityType = "Rack",
+            HasFilters = false,
+            SelectionUsage = "SpatialReference",
+            HasSpatialConstraint = true,
+            SpatialRelation = "Nearest",
+            SpatialDistance = 5000
+        };
+        InteractionContext context = new()
+        {
+            SelectedEntities = [CreateEntity("m1", SemanticEntityType.Machine)]
+        };
+        Assert.Throws<InvalidOperationException>(
+            () => interpreter.MapToSemanticQuery(dto, context));
+    }
+
+    [Fact]
+    public void MapToSemanticQuery_SpatialRelationWithoutSpatialIntent_ShouldThrow()
+    {
+        OpenAiNaturalLanguageQueryInterpreter interpreter = CreateRackInterpreter();
+        OpenAiNaturalLanguageQueryInterpreter.AiSemanticQueryDto dto = new()
+        {
+            Intent = "Select",
+            EntityType = "Rack",
+            HasFilters = false,
+            SelectionUsage = "None",
+            HasSpatialConstraint = false,
+            SpatialRelation = "Nearest"
+        };
+        Assert.Throws<InvalidOperationException>(
+            () => interpreter.MapToSemanticQuery(dto, new InteractionContext()));
     }
 
     private static OpenAiNaturalLanguageQueryInterpreter CreateRackInterpreter()

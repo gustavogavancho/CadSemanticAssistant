@@ -50,6 +50,14 @@ public sealed class SemanticQueryEngine
         IReadOnlyCollection<CadEntity> results =
             queryable.ToArray();
 
+        if (query.SpatialFilter is not null)
+        {
+            results = ApplySpatialFilter(
+                results,
+                entities,
+                query.SpatialFilter);
+        }
+
         return new SemanticQueryResult
         {
             Query =
@@ -58,6 +66,80 @@ public sealed class SemanticQueryEngine
             Entities =
                 results
         };
+    }
+
+    private static IReadOnlyCollection<CadEntity> ApplySpatialFilter(
+        IReadOnlyCollection<CadEntity> candidates,
+        IReadOnlyCollection<CadEntity> allEntities,
+        SpatialFilter spatialFilter)
+    {
+        HashSet<string> referenceIds = new(
+            spatialFilter.ReferenceEntityIds,
+            StringComparer.OrdinalIgnoreCase);
+
+        CadEntity[] references = allEntities
+            .Where(entity => referenceIds.Contains(entity.Id))
+            .ToArray();
+
+        if (references.Length == 0)
+        {
+            return [];
+        }
+
+        // Never treat a reference as its own nearest object.
+        CadEntity[] eligibleCandidates = candidates
+            .Where(entity => !referenceIds.Contains(entity.Id))
+            .ToArray();
+
+        return spatialFilter.Relation switch
+        {
+            SpatialRelation.WithinDistance =>
+                ApplyWithinDistance(eligibleCandidates, references, spatialFilter),
+            SpatialRelation.Nearest =>
+                ApplyNearest(eligibleCandidates, references),
+            _ => []
+        };
+    }
+
+    private static IReadOnlyCollection<CadEntity> ApplyWithinDistance(
+        IReadOnlyCollection<CadEntity> candidates,
+        IReadOnlyCollection<CadEntity> references,
+        SpatialFilter filter)
+    {
+        double maximum = filter.MaxDistance
+            ?? throw new InvalidOperationException(
+                "WithinDistance requires MaxDistance.");
+
+        return candidates
+            .Where(candidate => GetMinimumDistance(candidate, references) <= maximum)
+            .ToArray();
+    }
+
+    private static IReadOnlyCollection<CadEntity> ApplyNearest(
+        IReadOnlyCollection<CadEntity> candidates,
+        IReadOnlyCollection<CadEntity> references)
+    {
+        CadEntity? nearest = candidates
+            .OrderBy(candidate => GetMinimumDistance(candidate, references))
+            .ThenBy(candidate => candidate.Id, StringComparer.OrdinalIgnoreCase)
+            .FirstOrDefault();
+
+        return nearest is null ? [] : [nearest];
+    }
+
+    private static double GetMinimumDistance(
+        CadEntity candidate,
+        IReadOnlyCollection<CadEntity> references)
+    {
+        return references.Min(reference =>
+            CalculateDistance2D(candidate.Position, reference.Position));
+    }
+
+    private static double CalculateDistance2D(CadPoint first, CadPoint second)
+    {
+        double dx = first.X - second.X;
+        double dy = first.Y - second.Y;
+        return Math.Sqrt(dx * dx + dy * dy);
     }
 
     private static bool MatchesFilter(

@@ -34,6 +34,10 @@ public sealed class SemanticQueryValidator
             query,
             errors);
 
+        ValidateSpatialFilter(
+            query,
+            errors);
+
         EntityMappingRule? entityMapping =
             FindEntityMapping(
                 query);
@@ -94,6 +98,58 @@ public sealed class SemanticQueryValidator
                     SemanticQueryValidationErrorCode.InvalidScope,
 
                     "The semantic query scope contains an invalid entity ID."));
+        }
+    }
+
+    private static void ValidateSpatialFilter(
+        SemanticQuery query,
+        ICollection<SemanticQueryValidationError> errors)
+    {
+        SpatialFilter? spatialFilter = query.SpatialFilter;
+
+        if (spatialFilter is null)
+        {
+            return;
+        }
+
+        if (spatialFilter.ReferenceEntityIds.Count == 0 ||
+            spatialFilter.ReferenceEntityIds.Any(string.IsNullOrWhiteSpace))
+        {
+            errors.Add(
+                new SemanticQueryValidationError(
+                    SemanticQueryValidationErrorCode.InvalidSpatialFilter,
+                    "A spatial filter requires nonempty reference entity IDs."));
+        }
+
+        switch (spatialFilter.Relation)
+        {
+            case SpatialRelation.WithinDistance:
+                if (spatialFilter.MaxDistance is not double distance ||
+                    !double.IsFinite(distance) || distance <= 0)
+                {
+                    errors.Add(
+                        new SemanticQueryValidationError(
+                            SemanticQueryValidationErrorCode.InvalidSpatialFilter,
+                            "WithinDistance requires a finite, positive MaxDistance."));
+                }
+                break;
+
+            case SpatialRelation.Nearest:
+                if (spatialFilter.MaxDistance is not null)
+                {
+                    errors.Add(
+                        new SemanticQueryValidationError(
+                            SemanticQueryValidationErrorCode.InvalidSpatialFilter,
+                            "Nearest must not define MaxDistance."));
+                }
+                break;
+
+            default:
+                errors.Add(
+                    new SemanticQueryValidationError(
+                        SemanticQueryValidationErrorCode.InvalidSpatialFilter,
+                        $"Spatial relation '{spatialFilter.Relation}' is not supported."));
+                break;
         }
     }
 
