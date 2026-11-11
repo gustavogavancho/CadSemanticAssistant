@@ -85,8 +85,22 @@ public sealed class SemanticQueryValidator
         SemanticQuery query,
         ICollection<SemanticQueryValidationError> errors)
     {
+        if (!Enum.IsDefined(query.ScopeSource))
+        {
+            errors.Add(new SemanticQueryValidationError(
+                SemanticQueryValidationErrorCode.InvalidScope,
+                "Unknown scope source."));
+        }
+
         if (query.ScopeEntityIds.Count == 0)
         {
+            if (query.ScopeSource != QueryScopeSource.None)
+            {
+                errors.Add(new SemanticQueryValidationError(
+                    SemanticQueryValidationErrorCode.InvalidScope,
+                    "A declared scope source requires at least one entity ID."));
+            }
+
             return;
         }
 

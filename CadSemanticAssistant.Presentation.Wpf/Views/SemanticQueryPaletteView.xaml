@@ -125,6 +125,13 @@
                 Text="{Binding SpatialContextText}" />
 
             <TextBlock
+                Margin="0,0,0,5"
+                FontSize="10"
+                Foreground="{StaticResource DarkMuted}"
+                TextWrapping="Wrap"
+                Text="{Binding ConversationStatusText, Mode=OneWay}" />
+
+            <TextBlock
         Margin="0,6,0,4"
         Text="Entity type" />
 
@@ -372,6 +379,11 @@
                     Margin="0,0,0,5"
                     Command="{Binding ClearSelectionCommand}"
                     Content="Clear selection" />
+
+                <Button
+                    Margin="6,0,0,5"
+                    Command="{Binding ResetConversationCommand}"
+                    Content="Reset conversation" />
 
             </WrapPanel>
 

@@ -1,8 +1,8 @@
 using System.Text.Json;
-
+using CadSemanticAssistant.Application.Conversation;
 using CadSemanticAssistant.Application.Interaction;
-using CadSemanticAssistant.Application.Semantics.Configuration;
 using CadSemanticAssistant.Application.Semantics;
+using CadSemanticAssistant.Application.Semantics.Configuration;
 using CadSemanticAssistant.Domain.Models;
 using CadSemanticAssistant.Domain.Queries;
 using CadSemanticAssistant.Domain.Semantics;
@@ -153,6 +153,9 @@ public sealed class OpenAiNaturalLanguageQueryInterpreterTests
         Assert.Contains("spatialRelation", required);
         Assert.Contains("spatialDistance", required);
         Assert.Contains("unsupportedSpatialConstraints", required);
+        Assert.Contains("hasConversationalReference", required);
+        Assert.Contains("usePreviousResults", required);
+        Assert.Contains("unsupportedConversationalReferences", required);
         Assert.DoesNotContain("useSelection", required);
     }
 
@@ -419,6 +422,181 @@ public sealed class OpenAiNaturalLanguageQueryInterpreterTests
         };
         Assert.Throws<InvalidOperationException>(
             () => interpreter.MapToSemanticQuery(dto, new InteractionContext()));
+    }
+
+    [Fact]
+    public void MapToSemanticQuery_PreviousResultsFollowup_UsesOnlyPreviousIds()
+    {
+        OpenAiNaturalLanguageQueryInterpreter interpreter = CreateRackInterpreter();
+        OpenAiNaturalLanguageQueryInterpreter.AiSemanticQueryDto dto = new()
+        {
+            Intent = "Select",
+            EntityType = "Rack",
+            HasFilters = true,
+            Filters = [new OpenAiNaturalLanguageQueryInterpreter.AiQueryFilterDto
+            {
+                Property = "capacity", Operator = "GreaterThan", Value = "20"
+            }],
+            HasConversationalReference = true,
+            UsePreviousResults = true,
+            SelectionUsage = "None"
+        };
+        ConversationContext history = CreateConversationContext("R1", "R2");
+        SemanticQuery query = interpreter.MapToSemanticQuery(
+            dto, new InteractionContext(), history);
+        Assert.Equal(QueryScopeSource.PreviousResults, query.ScopeSource);
+        Assert.Equal(new[] { "R1", "R2" }, query.ScopeEntityIds);
+        Assert.Null(query.SpatialFilter);
+    }
+
+    [Fact]
+    public void MapToSemanticQuery_PreviousResultsWithoutQuery_RejectsGlobalFallback()
+    {
+        OpenAiNaturalLanguageQueryInterpreter interpreter = CreateRackInterpreter();
+        OpenAiNaturalLanguageQueryInterpreter.AiSemanticQueryDto dto = new()
+        {
+            Intent = "Select",
+            EntityType = "Rack",
+            HasFilters = false,
+            HasConversationalReference = true,
+            UsePreviousResults = true
+        };
+        InvalidOperationException error = Assert.Throws<InvalidOperationException>(() =>
+            interpreter.MapToSemanticQuery(dto, new InteractionContext(), ConversationContext.Empty));
+        Assert.Contains("no query has been executed", error.Message);
+    }
+
+    [Fact]
+    public void MapToSemanticQuery_PreviousZeroResults_RejectsGlobalFallback()
+    {
+        OpenAiNaturalLanguageQueryInterpreter interpreter = CreateRackInterpreter();
+        OpenAiNaturalLanguageQueryInterpreter.AiSemanticQueryDto dto = new()
+        {
+            Intent = "Select",
+            EntityType = "Rack",
+            HasFilters = false,
+            HasConversationalReference = true,
+            UsePreviousResults = true
+        };
+        InvalidOperationException error = Assert.Throws<InvalidOperationException>(() =>
+            interpreter.MapToSemanticQuery(dto, new InteractionContext(), CreateConversationContext()));
+        Assert.Contains("zero entities", error.Message);
+    }
+
+    [Fact]
+    public void MapToSemanticQuery_ConversationReferenceOmitted_ShouldThrow()
+    {
+        OpenAiNaturalLanguageQueryInterpreter interpreter = CreateRackInterpreter();
+        OpenAiNaturalLanguageQueryInterpreter.AiSemanticQueryDto dto = new()
+        {
+            Intent = "Select",
+            EntityType = "Rack",
+            HasFilters = false,
+            HasConversationalReference = true,
+            UsePreviousResults = false
+        };
+        InvalidOperationException error = Assert.Throws<InvalidOperationException>(() =>
+            interpreter.MapToSemanticQuery(dto, new InteractionContext(), CreateConversationContext("R1")));
+        Assert.Contains("omitted", error.Message);
+    }
+
+    [Fact]
+    public void MapToSemanticQuery_PreviousResultsWithSpatialReference_ShouldThrow()
+    {
+        OpenAiNaturalLanguageQueryInterpreter interpreter = CreateRackInterpreter();
+        OpenAiNaturalLanguageQueryInterpreter.AiSemanticQueryDto dto = new()
+        {
+            Intent = "Select",
+            EntityType = "Rack",
+            HasFilters = false,
+            HasConversationalReference = true,
+            UsePreviousResults = true,
+            SelectionUsage = "SpatialReference",
+            HasSpatialConstraint = true,
+            SpatialRelation = "Nearest"
+        };
+        InvalidOperationException error = Assert.Throws<InvalidOperationException>(() =>
+            interpreter.MapToSemanticQuery(dto, new InteractionContext(), CreateConversationContext("R1")));
+        Assert.Contains("not supported", error.Message);
+    }
+
+    [Fact]
+    public void MapToSemanticQuery_UnsupportedConversationalReference_ShouldThrow()
+    {
+        OpenAiNaturalLanguageQueryInterpreter interpreter = CreateRackInterpreter();
+        OpenAiNaturalLanguageQueryInterpreter.AiSemanticQueryDto dto = new()
+        {
+            Intent = "Select",
+            EntityType = "Rack",
+            HasFilters = false,
+            UnsupportedConversationalReferences = ["the objects from two queries ago"]
+        };
+        InvalidOperationException error = Assert.Throws<InvalidOperationException>(() =>
+            interpreter.MapToSemanticQuery(dto, new InteractionContext(), CreateConversationContext("R1")));
+        Assert.Contains("Unsupported conversational reference", error.Message);
+    }
+
+    [Fact]
+    public void MapToSemanticQuery_PreviousResultsWithDifferentEntityType_ShouldThrow()
+    {
+        // Arrange
+        SemanticMappingConfiguration configuration = new()
+        {
+            EntityMappings =
+            [
+                new EntityMappingRule
+            {
+                EntityType = SemanticEntityType.Rack,
+                Properties = []
+            },
+            new EntityMappingRule
+            {
+                EntityType = SemanticEntityType.Machine,
+                Properties = []
+            }
+            ]
+        };
+
+        OpenAiNaturalLanguageQueryInterpreter interpreter =
+            new(null, null, configuration);
+
+        OpenAiNaturalLanguageQueryInterpreter.AiSemanticQueryDto dto = new()
+        {
+            Intent = "Select",
+            EntityType = "Machine",
+            HasFilters = false,
+            HasConversationalReference = true,
+            UsePreviousResults = true
+        };
+
+        ConversationContext conversationContext =
+            CreateConversationContext("R1");
+
+        // Act
+        InvalidOperationException error =
+            Assert.Throws<InvalidOperationException>(
+                () => interpreter.MapToSemanticQuery(
+                    dto,
+                    new InteractionContext(),
+                    conversationContext));
+
+        // Assert
+        Assert.Contains(
+            "Previous-results queries must use the entity type",
+            error.Message);
+    }
+
+    private static ConversationContext CreateConversationContext(params string[] ids)
+    {
+        return new ConversationContext
+        {
+            PreviousQuery = new SemanticQuery
+            {
+                Intent = QueryIntent.Select,
+                EntityType = SemanticEntityType.Rack
+            },
+            PreviousResultEntityIds = ids
+        };
     }
 
     private static OpenAiNaturalLanguageQueryInterpreter CreateRackInterpreter()

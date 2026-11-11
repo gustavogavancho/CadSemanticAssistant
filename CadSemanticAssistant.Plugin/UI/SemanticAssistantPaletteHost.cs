@@ -1,5 +1,6 @@
 using System.Drawing;
 using Autodesk.AutoCAD.Windows;
+using CadSemanticAssistant.Application.Conversation;
 using CadSemanticAssistant.Application.Interaction;
 using CadSemanticAssistant.Application.NaturalLanguage;
 using CadSemanticAssistant.Application.Queries;
@@ -49,10 +50,14 @@ public static class SemanticAssistantPaletteHost
             new AutoCadInteractionContextProvider(
                 semanticEntityReader);
 
+        IConversationContextStore conversationContextStore =
+            new AutoCadConversationContextStore();
+
         ISemanticQuerySession querySession =
             new AutoCadSemanticQuerySession(
                 semanticEntityReader,
-                queryValidator);
+                queryValidator,
+                conversationContextStore);
 
         string? apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY");
 
@@ -68,7 +73,8 @@ public static class SemanticAssistantPaletteHost
                 configuration,
                 naturalLanguageQueryInterpreter,
                 queryValidator,
-                interactionContextProvider);
+                interactionContextProvider,
+                conversationContextStore);
 
         SemanticQueryPaletteView view = new()
         {

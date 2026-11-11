@@ -14,6 +14,8 @@ public sealed class SemanticQuery
     public IReadOnlyCollection<string> ScopeEntityIds { get; init; }
         = [];
 
+    public QueryScopeSource ScopeSource { get; init; } = QueryScopeSource.None;
+
     public SpatialFilter? SpatialFilter { get; init; }
 
     public bool IsScoped =>

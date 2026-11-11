@@ -304,6 +304,22 @@ public sealed class SemanticQueryValidatorTests
             error => error.Code == errorCode);
     }
 
+    [Fact]
+    public void Validate_PreviousResultsSourceWithoutIds_ShouldFail()
+    {
+        SemanticQuery query = new()
+        {
+            Intent = QueryIntent.Select,
+            EntityType = SemanticEntityType.Rack,
+            ScopeSource = QueryScopeSource.PreviousResults,
+            ScopeEntityIds = []
+        };
+        SemanticQueryValidationResult result = _validator.Validate(query);
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, error =>
+            error.Code == SemanticQueryValidationErrorCode.InvalidScope);
+    }
+
     private static SemanticMappingConfiguration CreateConfiguration()
     {
         return new SemanticMappingConfiguration

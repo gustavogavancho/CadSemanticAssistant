@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using CadSemanticAssistant.Application.Conversation;
 using CadSemanticAssistant.Application.Interaction;
 using CadSemanticAssistant.Application.NaturalLanguage;
 using CadSemanticAssistant.Application.Semantics;
@@ -55,9 +56,18 @@ public sealed class OpenAiNaturalLanguageQueryInterpreter
                 nameof(configuration));
     }
 
+    public Task<SemanticQuery> InterpretAsync(
+        string text,
+        InteractionContext context,
+        CancellationToken cancellationToken = default)
+    {
+        return InterpretAsync(text, context, ConversationContext.Empty, cancellationToken);
+    }
+
     public async Task<SemanticQuery> InterpretAsync(
         string text,
         InteractionContext context,
+        ConversationContext conversationContext,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(text))
@@ -68,11 +78,12 @@ public sealed class OpenAiNaturalLanguageQueryInterpreter
         }
 
         ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(conversationContext);
 
         ChatClient client =
             GetClient();
 
-        string systemPrompt = BuildSystemPrompt(context);
+        string systemPrompt = BuildSystemPrompt(context, conversationContext);
 
         string jsonSchema =
             BuildJsonSchema();
@@ -146,7 +157,8 @@ public sealed class OpenAiNaturalLanguageQueryInterpreter
 
         return MapToSemanticQuery(
             dto,
-            context);
+            context,
+            conversationContext);
     }
 
     private ChatClient GetClient()
@@ -194,7 +206,7 @@ public sealed class OpenAiNaturalLanguageQueryInterpreter
         };
     }
 
-    private string BuildSystemPrompt(InteractionContext context)
+    private string BuildSystemPrompt(InteractionContext context, ConversationContext conversationContext)
     {
         StringBuilder builder =
             new();
@@ -239,9 +251,9 @@ public sealed class OpenAiNaturalLanguageQueryInterpreter
             selectionUsage="None": the request targets the whole drawing,
             even when some objects happen to be selected.
 
-            selectionUsage="Scope": the selected entities are the candidates.
-            Examples: "de estos racks", "among the selected elements",
-            "which of these are SC2?"
+            selectionUsage="Scope": the GRAPHICALLY selected entities are
+            the candidates. Examples: "de estos racks seleccionados",
+            "among the currently selected graphical elements".
 
             selectionUsage="SpatialReference": the single selected entity
             is the reference, not the set of candidates.
@@ -272,6 +284,44 @@ public sealed class OpenAiNaturalLanguageQueryInterpreter
 
             Selection does not imply selectionUsage="Scope" or
             selectionUsage="SpatialReference" unless the request requires it.
+
+            Conversational context is DIFFERENT from graphical selection.
+            usePreviousResults=true ONLY when the user refers to the last
+            executed query's results: "de esos", "of those results",
+            "entre los resultados anteriores", "which of those results",
+            or a clear follow-up such as "and how many of those are SC2?".
+            When previous executed results exist, "de esos" in a follow-up
+            means PREVIOUS RESULTS, not current graphical selection, even
+            if AutoCAD currently has objects selected. The phrase "de estos
+            objetos seleccionados" explicitly means graphical selection.
+            Example: last executed query produced 3 Rack results; user says
+            "¿Y de esos cuáles son SC1?": entityType=Rack,
+            hasFilters=true, filter model Equals SC1,
+            selectionUsage=None, hasConversationalReference=true,
+            usePreviousResults=true, hasSpatialConstraint=false.
+            This previous-result reference must be resolved by the application.
+            Never invent previous-result entity IDs.
+
+            Set hasConversationalReference=true whenever the user's request
+            refers to a previous result, including when no previous result
+            is available. In that case set usePreviousResults=true; the
+            application will reject the missing context.
+            If a conversational reference is unsupported/ambiguous, place
+            its description in unsupportedConversationalReferences.
+            Never silently omit a conversational reference or broaden a
+            previous-results query into a whole-drawing query.
+
+            For a previous-results follow-up, use the SAME entity type as
+            the last executed results, unless the user explicitly asks to
+            switch types, which is unsupported in v1.0. Report unsupported
+            conversational references rather than substituting another type.
+            Apply only NEW property filters from the new utterance. The
+            previous results already encode the previous query's restrictions;
+            do not duplicate the old filters or old spatial relation.
+
+            v1.0 does not combine previous-results scope with graphical
+            selection Scope/SpatialReference, nor with a NEW spatial relation.
+            Mark unsupported combinations rather than silently dropping one.
 
             Semantic CAD model:
             """);
@@ -306,6 +356,27 @@ public sealed class OpenAiNaturalLanguageQueryInterpreter
                             : $" ({properties})"
                     ));
             }
+        }
+
+        builder.AppendLine();
+        builder.AppendLine("Last executed query in this drawing:");
+        if (!conversationContext.HasPreviousQuery)
+        {
+            builder.AppendLine("- None (no previous executed query).");
+        }
+        else
+        {
+            SemanticQuery previousQuery = conversationContext.PreviousQuery!;
+            builder.AppendLine($"- Target: {previousQuery.EntityType}");
+            builder.AppendLine($"- Intent: {previousQuery.Intent}");
+            builder.AppendLine($"- Result count: {conversationContext.PreviousResultEntityIds.Count}");
+            builder.AppendLine("- Filters: " +
+                (previousQuery.Filters.Count == 0 ? "none" :
+                 string.Join(" AND ", previousQuery.Filters.Select(f =>
+                     $"{f.Property} {f.Operator} {f.Value}"))));
+            builder.AppendLine("- Spatial relation: " +
+                (previousQuery.SpatialFilter?.Relation.ToString() ?? "none"));
+            // Do not send handles/ObjectIds from previous results to the LLM.
         }
 
         foreach (
@@ -438,6 +509,16 @@ public sealed class OpenAiNaturalLanguageQueryInterpreter
             "unsupportedSpatialConstraints": {
               "type": "array",
               "items": { "type": "string" }
+            },
+            "hasConversationalReference": {
+              "type": "boolean"
+            },
+            "usePreviousResults": {
+              "type": "boolean"
+            },
+            "unsupportedConversationalReferences": {
+              "type": "array",
+              "items": { "type": "string" }
             }
           },
           "required": [
@@ -450,7 +531,10 @@ public sealed class OpenAiNaturalLanguageQueryInterpreter
             "hasSpatialConstraint",
             "spatialRelation",
             "spatialDistance",
-            "unsupportedSpatialConstraints"
+            "unsupportedSpatialConstraints",
+            "hasConversationalReference",
+            "usePreviousResults",
+            "unsupportedConversationalReferences"
           ],
           "additionalProperties": false
         }
@@ -461,8 +545,17 @@ public sealed class OpenAiNaturalLanguageQueryInterpreter
         AiSemanticQueryDto dto,
         InteractionContext context)
     {
+        return MapToSemanticQuery(dto, context, ConversationContext.Empty);
+    }
+
+    internal SemanticQuery MapToSemanticQuery(
+        AiSemanticQueryDto dto,
+        InteractionContext context,
+        ConversationContext conversationContext)
+    {
         ArgumentNullException.ThrowIfNull(dto);
         ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(conversationContext);
 
         if (!Enum.TryParse(
                 dto.Intent,
@@ -533,6 +626,7 @@ public sealed class OpenAiNaturalLanguageQueryInterpreter
         }
 
         ValidateSpatialInterpretation(dto, selectionUsage, spatialRelation);
+        ValidateConversationInterpretation(dto, selectionUsage, conversationContext);
 
         List<QueryFilter> filters =
             [];
@@ -586,24 +680,41 @@ public sealed class OpenAiNaturalLanguageQueryInterpreter
         }
 
         IReadOnlyCollection<string> scopeEntityIds = [];
+        QueryScopeSource scopeSource = QueryScopeSource.None;
         SpatialFilter? spatialFilter = null;
 
-        switch (selectionUsage)
+        if (dto.UsePreviousResults)
         {
-            case AiSelectionUsage.None:
-                break;
-
-            case AiSelectionUsage.Scope:
-                scopeEntityIds = ResolveScopeEntityIds(entityType, context);
-                break;
-
-            case AiSelectionUsage.SpatialReference:
-                spatialFilter = ResolveSpatialFilter(dto, spatialRelation, context);
-                break;
-
-            default:
+            if (conversationContext.PreviousQuery!.EntityType != entityType)
+            {
                 throw new InvalidOperationException(
-                    $"Unsupported selection usage '{selectionUsage}'.");
+                    "Previous-results queries must use the entity type " +
+                    "returned by the last executed query.");
+            }
+
+            scopeEntityIds = conversationContext.PreviousResultEntityIds.ToArray();
+            scopeSource = QueryScopeSource.PreviousResults;
+        }
+        else
+        {
+            switch (selectionUsage)
+            {
+                case AiSelectionUsage.None:
+                    break;
+
+                case AiSelectionUsage.Scope:
+                    scopeEntityIds = ResolveScopeEntityIds(entityType, context);
+                    scopeSource = QueryScopeSource.GraphicalSelection;
+                    break;
+
+                case AiSelectionUsage.SpatialReference:
+                    spatialFilter = ResolveSpatialFilter(dto, spatialRelation, context);
+                    break;
+
+                default:
+                    throw new InvalidOperationException(
+                        $"Unsupported selection usage '{selectionUsage}'.");
+            }
         }
 
         return new SemanticQuery
@@ -620,9 +731,54 @@ public sealed class OpenAiNaturalLanguageQueryInterpreter
             ScopeEntityIds =
                 scopeEntityIds,
 
+            ScopeSource = scopeSource,
+
             SpatialFilter =
                 spatialFilter
         };
+    }
+
+    private static void ValidateConversationInterpretation(
+        AiSemanticQueryDto dto,
+        AiSelectionUsage selectionUsage,
+        ConversationContext conversationContext)
+    {
+        if (dto.UnsupportedConversationalReferences.Length > 0)
+        {
+            throw new InvalidOperationException(
+                "Unsupported conversational reference: " +
+                string.Join(", ", dto.UnsupportedConversationalReferences));
+        }
+
+        if (dto.HasConversationalReference != dto.UsePreviousResults)
+        {
+            throw new InvalidOperationException(
+                "The conversational reference was omitted or is inconsistent.");
+        }
+
+        if (!dto.UsePreviousResults)
+        {
+            return;
+        }
+
+        if (selectionUsage != AiSelectionUsage.None || dto.HasSpatialConstraint)
+        {
+            throw new InvalidOperationException(
+                "Combining previous results with a new graphical/spatial " +
+                "selection is not supported in v1.0.");
+        }
+
+        if (!conversationContext.HasPreviousQuery)
+        {
+            throw new InvalidOperationException(
+                "The query refers to previous results, but no query has been executed in this drawing.");
+        }
+
+        if (!conversationContext.HasPreviousResults)
+        {
+            throw new InvalidOperationException(
+                "The previous query returned zero entities. Previous-results scope cannot be empty.");
+        }
     }
 
     private static IReadOnlyCollection<string> ResolveScopeEntityIds(
@@ -819,6 +975,15 @@ public sealed class OpenAiNaturalLanguageQueryInterpreter
         [JsonPropertyName("unsupportedSpatialConstraints")]
         public string[] UnsupportedSpatialConstraints { get; init; }
             = [];
+
+        [JsonPropertyName("hasConversationalReference")]
+        public bool HasConversationalReference { get; init; }
+
+        [JsonPropertyName("usePreviousResults")]
+        public bool UsePreviousResults { get; init; }
+
+        [JsonPropertyName("unsupportedConversationalReferences")]
+        public string[] UnsupportedConversationalReferences { get; init; } = [];
     }
 
     internal sealed class AiQueryFilterDto

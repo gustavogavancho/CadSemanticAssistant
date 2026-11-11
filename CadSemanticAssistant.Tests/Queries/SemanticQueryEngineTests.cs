@@ -317,6 +317,25 @@ public sealed class SemanticQueryEngineTests
         };
     }
 
+    [Fact]
+    public void Execute_ConversationScope_ShouldNeverExpandToEntireDrawing()
+    {
+        SemanticQuery query = new()
+        {
+            Intent = QueryIntent.Select,
+            EntityType = SemanticEntityType.Rack,
+            ScopeSource = QueryScopeSource.PreviousResults,
+            ScopeEntityIds = ["1", "5"],
+            Filters = [new QueryFilter
+            {
+                Property = "model", Operator = QueryOperator.Equals, Value = "SC2"
+            }]
+        };
+        SemanticQueryResult result = _sut.Execute(query, _entities);
+        Assert.Single(result.Entities);
+        Assert.Equal("1", result.Entities.Single().Id);
+    }
+
     private static IReadOnlyCollection<CadEntity> CreateEntities()
     {
         return

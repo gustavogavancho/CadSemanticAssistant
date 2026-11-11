@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using CadSemanticAssistant.Application.Conversation;
 using CadSemanticAssistant.Application.Interaction;
 using CadSemanticAssistant.Application.NaturalLanguage;
 using CadSemanticAssistant.Application.Queries;
@@ -21,6 +22,10 @@ public sealed class SemanticQueryPaletteViewModel : ObservableObject
 
     private IReadOnlyCollection<string> _scopeEntityIds = [];
     private SpatialFilter? _spatialFilter;
+    private QueryScopeSource _scopeSource = QueryScopeSource.None;
+    private QueryIntent _queryIntent = QueryIntent.Select;
+    private Guid _queryDrawingToken;
+    private readonly IConversationContextStore _conversationContextStore;
 
     private SemanticEntityType _selectedEntityType;
 
@@ -41,7 +46,8 @@ public sealed class SemanticQueryPaletteViewModel : ObservableObject
         SemanticMappingConfiguration configuration,
         INaturalLanguageQueryInterpreter naturalLanguageQueryInterpreter,
         ISemanticQueryValidator queryValidator,
-        IInteractionContextProvider interactionContextProvider)
+        IInteractionContextProvider interactionContextProvider,
+        IConversationContextStore conversationContextStore)
     {
         _querySession =
             querySession;
@@ -54,8 +60,9 @@ public sealed class SemanticQueryPaletteViewModel : ObservableObject
 
         _queryValidator = queryValidator;
 
-        _interactionContextProvider =
-            interactionContextProvider;
+        _interactionContextProvider = interactionContextProvider;
+        _conversationContextStore = conversationContextStore
+            ?? throw new ArgumentNullException(nameof(conversationContextStore));
 
         EntityTypes =
             new ObservableCollection<SemanticEntityType>(
@@ -87,6 +94,9 @@ public sealed class SemanticQueryPaletteViewModel : ObservableObject
         ClearSelectionCommand =
             new RelayCommand(
                 _ => ClearSelection());
+
+        ResetConversationCommand = new RelayCommand(
+            _ => ResetConversation());
 
         InterpretNaturalLanguageCommand =
             new AsyncRelayCommand(
@@ -153,10 +163,35 @@ public sealed class SemanticQueryPaletteViewModel : ObservableObject
 
     public int ScopeEntityCount => _scopeEntityIds.Count;
 
-    public string ScopeText =>
-        _scopeEntityIds.Count == 0
-            ? "Scope: entire drawing"
+    public string ScopeText => _scopeEntityIds.Count == 0
+        ? "Scope: entire drawing"
+        : _scopeSource == QueryScopeSource.PreviousResults
+            ? $"Scope: {_scopeEntityIds.Count} previous result(s)"
             : $"Scope: {_scopeEntityIds.Count} selected entity(s)";
+
+    public string ConversationStatusText
+    {
+        get
+        {
+            ConversationContext context;
+            try
+            {
+                context = _conversationContextStore.GetCurrentContext();
+            }
+            catch (InvalidOperationException)
+            {
+                return "Conversation: no active drawing";
+            }
+
+            if (!context.HasPreviousQuery)
+            {
+                return "Conversation: no previous executed query";
+            }
+
+            return $"Conversation: {context.PreviousResultEntityIds.Count} previous " +
+                   $"{context.PreviousQuery!.EntityType} result(s)";
+        }
+    }
 
     public string SpatialContextText => _spatialFilter?.Relation switch
     {
@@ -178,6 +213,8 @@ public sealed class SemanticQueryPaletteViewModel : ObservableObject
     public RelayCommand SelectResultsCommand { get; }
 
     public RelayCommand ClearSelectionCommand { get; }
+
+    public RelayCommand ResetConversationCommand { get; }
 
     private void AddFilter()
     {
@@ -202,11 +239,21 @@ public sealed class SemanticQueryPaletteViewModel : ObservableObject
     {
         try
         {
-            SemanticQuery query = BuildQuery();
+            ConversationContext active = _conversationContextStore.GetCurrentContext();
+            OnPropertyChanged(nameof(ConversationStatusText));
+            if (_queryDrawingToken != Guid.Empty &&
+                _queryDrawingToken != active.DrawingToken)
+            {
+                throw new InvalidOperationException(
+                    "The drawing changed after interpretation. Interpret again.");
+            }
 
+            SemanticQuery query = BuildQuery();
             SemanticQueryResult result = _querySession.Execute(query);
 
             _lastResult = result;
+            _queryDrawingToken = active.DrawingToken;
+            OnPropertyChanged(nameof(ConversationStatusText));
 
             Results.Clear();
 
@@ -268,6 +315,35 @@ public sealed class SemanticQueryPaletteViewModel : ObservableObject
         }
     }
 
+    private void ResetConversation()
+    {
+        try
+        {
+            _conversationContextStore.Clear();
+            _lastResult = null;
+            _queryDrawingToken = Guid.Empty;
+            _scopeEntityIds = [];
+            _scopeSource = QueryScopeSource.None;
+            _spatialFilter = null;
+            _queryIntent = QueryIntent.Select;
+            NaturalLanguageText = string.Empty;
+            Filters.Clear();
+            AddFilter();
+            Results.Clear();
+            OnPropertyChanged(nameof(ResultCount));
+            OnPropertyChanged(nameof(ScopeEntityCount));
+            OnPropertyChanged(nameof(ScopeText));
+            OnPropertyChanged(nameof(SpatialContextText));
+            OnPropertyChanged(nameof(ConversationStatusText));
+            SelectResultsCommand.RaiseCanExecuteChanged();
+            StatusText = "Conversation cleared for the active drawing. AutoCAD selection unchanged.";
+        }
+        catch (Exception exception)
+        {
+            StatusText = exception.Message;
+        }
+    }
+
     private SemanticQuery BuildQuery()
     {
         List<QueryFilter> queryFilters = [];
@@ -303,13 +379,15 @@ public sealed class SemanticQueryPaletteViewModel : ObservableObject
 
         return new SemanticQuery
         {
-            Intent = QueryIntent.Select,
+            Intent = _queryIntent,
 
             EntityType = SelectedEntityType,
 
             Filters = queryFilters,
 
             ScopeEntityIds = _scopeEntityIds,
+
+            ScopeSource = _scopeSource,
 
             SpatialFilter = _spatialFilter
         };
@@ -438,18 +516,29 @@ public sealed class SemanticQueryPaletteViewModel : ObservableObject
             StatusText =
                 "Reading AutoCAD context...";
 
+            ConversationContext conversationContext =
+                _conversationContextStore.GetCurrentContext();
+            OnPropertyChanged(nameof(ConversationStatusText));
             InteractionContext context =
-                _interactionContextProvider
-                    .GetCurrentContext();
+                _interactionContextProvider.GetCurrentContext();
 
-            StatusText =
-                "Interpreting query...";
+            StatusText = "Interpreting query...";
 
             SemanticQuery query =
                 await _naturalLanguageQueryInterpreter
                     .InterpretAsync(
                         NaturalLanguageText,
-                        context);
+                        context,
+                        conversationContext);
+
+            ConversationContext currentContext =
+                _conversationContextStore.GetCurrentContext();
+            if (currentContext.DrawingToken != conversationContext.DrawingToken ||
+                currentContext.Revision != conversationContext.Revision)
+            {
+                throw new InvalidOperationException(
+                    "The active drawing/conversation changed during interpretation. Try again.");
+            }
 
             SemanticQueryValidationResult validationResult =
                 _queryValidator.Validate(
@@ -461,8 +550,8 @@ public sealed class SemanticQueryPaletteViewModel : ObservableObject
                     validationResult.Errors);
             }
 
-            ApplySemanticQuery(
-                query);
+            ApplySemanticQuery(query);
+            _queryDrawingToken = conversationContext.DrawingToken;
 
             string scopeText =
                 query.ScopeEntityIds.Count == 0
@@ -496,9 +585,9 @@ public sealed class SemanticQueryPaletteViewModel : ObservableObject
         SelectedEntityType =
             query.EntityType;
 
-        _scopeEntityIds =
-            query.ScopeEntityIds.ToArray();
-
+        _scopeEntityIds = query.ScopeEntityIds.ToArray();
+        _scopeSource = query.ScopeSource;
+        _queryIntent = query.Intent;
         _spatialFilter = query.SpatialFilter;
 
         OnPropertyChanged(nameof(SpatialContextText));

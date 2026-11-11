@@ -1,4 +1,5 @@
 using Autodesk.AutoCAD.ApplicationServices;
+using CadSemanticAssistant.Application.Conversation;
 using CadSemanticAssistant.Application.Queries;
 using CadSemanticAssistant.Application.Queries.Validation;
 using CadSemanticAssistant.Application.Selection;
@@ -17,11 +18,14 @@ public sealed class AutoCadSemanticQuerySession
     private readonly ISemanticQueryValidator
         _queryValidator;
 
+    private readonly IConversationContextStore _conversationContextStore;
+
     private Document? _lastQueryDocument;
 
     public AutoCadSemanticQuerySession(
         AutoCadSemanticEntityReader semanticEntityReader,
-        ISemanticQueryValidator queryValidator)
+        ISemanticQueryValidator queryValidator,
+        IConversationContextStore conversationContextStore)
     {
         _semanticEntityReader =
             semanticEntityReader
@@ -30,8 +34,10 @@ public sealed class AutoCadSemanticQuerySession
 
         _queryValidator =
             queryValidator
-            ?? throw new ArgumentNullException(
-                nameof(queryValidator));
+            ?? throw new ArgumentNullException(nameof(queryValidator));
+
+        _conversationContextStore = conversationContextStore
+            ?? throw new ArgumentNullException(nameof(conversationContextStore));
     }
 
     public SemanticQueryResult Execute(
@@ -60,8 +66,11 @@ public sealed class AutoCadSemanticQuerySession
                 query,
                 entities);
 
-        _lastQueryDocument =
-            document;
+        _lastQueryDocument = document;
+
+        // Commit only successfully validated and executed results.
+        // A zero-result query also replaces the preceding context.
+        _conversationContextStore.Remember(result);
 
         return result;
     }
