@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Globalization;
 using CadSemanticAssistant.Application.Conversation;
+using CadSemanticAssistant.Application.Evaluation;
 using CadSemanticAssistant.Application.Interaction;
 using CadSemanticAssistant.Application.NaturalLanguage;
 using CadSemanticAssistant.Application.Queries;
@@ -40,6 +42,12 @@ public sealed class SemanticQueryPaletteViewModel : ObservableObject
     private bool _isInterpreting;
 
     private readonly ISemanticQueryValidator _queryValidator;
+    private readonly IQueryEvaluationRecorder _evaluationRecorder;
+    private string _evaluationStatusText = "Evaluation: off (opt in to collect metrics).";
+    private Guid _pendingTrialId = Guid.Empty;
+    private Guid _lastExecutedTrialId = Guid.Empty;
+    private bool _hasFeedbackForLastResult;
+    private bool _lastExecutionWasRecorded;
 
     public SemanticQueryPaletteViewModel(
         ISemanticQuerySession querySession,
@@ -47,8 +55,12 @@ public sealed class SemanticQueryPaletteViewModel : ObservableObject
         INaturalLanguageQueryInterpreter naturalLanguageQueryInterpreter,
         ISemanticQueryValidator queryValidator,
         IInteractionContextProvider interactionContextProvider,
-        IConversationContextStore conversationContextStore)
+        IConversationContextStore conversationContextStore,
+        IQueryEvaluationRecorder evaluationRecorder)
     {
+        _evaluationRecorder = evaluationRecorder
+            ?? throw new ArgumentNullException(nameof(evaluationRecorder));
+
         _querySession =
             querySession;
 
@@ -97,6 +109,12 @@ public sealed class SemanticQueryPaletteViewModel : ObservableObject
 
         ResetConversationCommand = new RelayCommand(
             _ => ResetConversation());
+
+        ExportEvaluationCommand = new RelayCommand(_ => ExportEvaluation());
+        MarkResultExpectedCommand = new RelayCommand(
+            _ => RecordFeedback(true), _ => CanRecordFeedback());
+        MarkResultUnexpectedCommand = new RelayCommand(
+            _ => RecordFeedback(false), _ => CanRecordFeedback());
 
         InterpretNaturalLanguageCommand =
             new AsyncRelayCommand(
@@ -216,6 +234,37 @@ public sealed class SemanticQueryPaletteViewModel : ObservableObject
 
     public RelayCommand ResetConversationCommand { get; }
 
+    public RelayCommand ExportEvaluationCommand { get; }
+
+    public RelayCommand MarkResultExpectedCommand { get; }
+
+    public RelayCommand MarkResultUnexpectedCommand { get; }
+
+    public bool IsEvaluationEnabled
+    {
+        get => _evaluationRecorder.IsEnabled;
+        set
+        {
+            if (_evaluationRecorder.IsEnabled == value)
+            {
+                return;
+            }
+
+            _evaluationRecorder.IsEnabled = value;
+            OnPropertyChanged(nameof(IsEvaluationEnabled));
+            EvaluationStatusText = value
+                ? "Evaluation: recording local anonymous metrics."
+                : "Evaluation: off. Previous recorded data remains local.";
+            RefreshFeedbackCommands();
+        }
+    }
+
+    public string EvaluationStatusText
+    {
+        get => _evaluationStatusText;
+        private set => SetProperty(ref _evaluationStatusText, value);
+    }
+
     private void AddFilter()
     {
         QueryFilterRowViewModel filter = new();
@@ -237,6 +286,19 @@ public sealed class SemanticQueryPaletteViewModel : ObservableObject
 
     private void ExecuteQuery()
     {
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        Guid trialId = _pendingTrialId == Guid.Empty
+            ? Guid.NewGuid()
+            : _pendingTrialId;
+        _pendingTrialId = Guid.Empty;
+        SemanticQuery? query = null;
+
+        // Feedback must correspond to this attempt only.
+        _lastExecutionWasRecorded = false;
+        _hasFeedbackForLastResult = false;
+        _lastExecutedTrialId = Guid.Empty;
+        RefreshFeedbackCommands();
+
         try
         {
             ConversationContext active = _conversationContextStore.GetCurrentContext();
@@ -248,36 +310,42 @@ public sealed class SemanticQueryPaletteViewModel : ObservableObject
                     "The drawing changed after interpretation. Interpret again.");
             }
 
-            SemanticQuery query = BuildQuery();
+            query = BuildQuery();
             SemanticQueryResult result = _querySession.Execute(query);
 
             _lastResult = result;
             _queryDrawingToken = active.DrawingToken;
+            _lastExecutedTrialId = trialId;
             OnPropertyChanged(nameof(ConversationStatusText));
 
             Results.Clear();
-
             foreach (CadEntity entity in result.Entities)
             {
                 Results.Add(new QueryResultItemViewModel(entity));
             }
 
             OnPropertyChanged(nameof(ResultCount));
-
             SelectResultsCommand.RaiseCanExecuteChanged();
 
+            stopwatch.Stop();
+            _lastExecutionWasRecorded = TryRecordEvaluation(
+                trialId, EvaluationStage.Execution, true, stopwatch.ElapsedMilliseconds,
+                query, result.Count, EvaluationFailureKind.None);
+            RefreshFeedbackCommands();
             StatusText = $"Query executed successfully. {result.Count} result(s).";
         }
         catch (Exception exception)
         {
+            stopwatch.Stop();
+            TryRecordEvaluation(
+                trialId, EvaluationStage.Execution, false, stopwatch.ElapsedMilliseconds,
+                query, null, ClassifyFailure(exception));
+
             _lastResult = null;
-
             Results.Clear();
-
             OnPropertyChanged(nameof(ResultCount));
-
             SelectResultsCommand.RaiseCanExecuteChanged();
-
+            RefreshFeedbackCommands();
             StatusText = exception.Message;
         }
     }
@@ -326,6 +394,11 @@ public sealed class SemanticQueryPaletteViewModel : ObservableObject
             _scopeSource = QueryScopeSource.None;
             _spatialFilter = null;
             _queryIntent = QueryIntent.Select;
+            _pendingTrialId = Guid.Empty;
+            _lastExecutedTrialId = Guid.Empty;
+            _lastExecutionWasRecorded = false;
+            _hasFeedbackForLastResult = false;
+            RefreshFeedbackCommands();
             NaturalLanguageText = string.Empty;
             Filters.Clear();
             AddFilter();
@@ -499,37 +572,33 @@ public sealed class SemanticQueryPaletteViewModel : ObservableObject
 
     private async Task InterpretNaturalLanguageAsync()
     {
-        if (string.IsNullOrWhiteSpace(
-                NaturalLanguageText))
+        if (string.IsNullOrWhiteSpace(NaturalLanguageText))
         {
-            StatusText =
-                "Enter a natural-language query.";
-
+            StatusText = "Enter a natural-language query.";
             return;
         }
 
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        Guid trialId = Guid.NewGuid();
+        _pendingTrialId = Guid.Empty;
+        // A new interpretation closes feedback for the preceding execution.
+        _hasFeedbackForLastResult = true;
+        RefreshFeedbackCommands();
+        SemanticQuery? query = null;
+
         try
         {
-            IsInterpreting =
-                true;
-
-            StatusText =
-                "Reading AutoCAD context...";
+            IsInterpreting = true;
+            StatusText = "Reading AutoCAD context...";
 
             ConversationContext conversationContext =
                 _conversationContextStore.GetCurrentContext();
             OnPropertyChanged(nameof(ConversationStatusText));
-            InteractionContext context =
-                _interactionContextProvider.GetCurrentContext();
+            InteractionContext context = _interactionContextProvider.GetCurrentContext();
 
             StatusText = "Interpreting query...";
-
-            SemanticQuery query =
-                await _naturalLanguageQueryInterpreter
-                    .InterpretAsync(
-                        NaturalLanguageText,
-                        context,
-                        conversationContext);
+            query = await _naturalLanguageQueryInterpreter.InterpretAsync(
+                NaturalLanguageText, context, conversationContext);
 
             ConversationContext currentContext =
                 _conversationContextStore.GetCurrentContext();
@@ -540,43 +609,147 @@ public sealed class SemanticQueryPaletteViewModel : ObservableObject
                     "The active drawing/conversation changed during interpretation. Try again.");
             }
 
-            SemanticQueryValidationResult validationResult =
-                _queryValidator.Validate(
-                    query);
-
+            SemanticQueryValidationResult validationResult = _queryValidator.Validate(query);
             if (!validationResult.IsValid)
             {
-                throw new SemanticQueryValidationException(
-                    validationResult.Errors);
+                throw new SemanticQueryValidationException(validationResult.Errors);
             }
 
             ApplySemanticQuery(query);
             _queryDrawingToken = conversationContext.DrawingToken;
+            _pendingTrialId = trialId;
 
-            string scopeText =
-                query.ScopeEntityIds.Count == 0
-                    ? "whole drawing"
+            string scopeText = query.ScopeEntityIds.Count == 0
+                ? "whole drawing"
+                : query.ScopeSource == QueryScopeSource.PreviousResults
+                    ? $"{query.ScopeEntityIds.Count} previous result(s)"
                     : $"{query.ScopeEntityIds.Count} selected entity(s)";
+            string spatialText = query.SpatialFilter?.Relation.ToString() ?? "none";
 
-            string spatialText = query.SpatialFilter?.Relation.ToString()
-                ?? "none";
-
+            stopwatch.Stop();
+            TryRecordEvaluation(
+                trialId, EvaluationStage.Interpretation, true, stopwatch.ElapsedMilliseconds,
+                query, null, EvaluationFailureKind.None);
             StatusText =
-                $"Interpreted {query.EntityType} query " +
-                $"with {query.Filters.Count} filter(s). " +
+                $"Interpreted {query.EntityType} query with {query.Filters.Count} filter(s). " +
                 $"Scope: {scopeText}. Spatial relation: {spatialText}. " +
                 "Review it and press Execute query.";
         }
         catch (Exception exception)
         {
-            StatusText =
-                $"Could not interpret query: {exception.Message}";
+            stopwatch.Stop();
+            TryRecordEvaluation(
+                trialId, EvaluationStage.Interpretation, false, stopwatch.ElapsedMilliseconds,
+                query, null, ClassifyFailure(exception));
+            StatusText = $"Could not interpret query: {exception.Message}";
         }
         finally
         {
-            IsInterpreting =
-                false;
+            IsInterpreting = false;
         }
+    }
+
+    private bool CanRecordFeedback()
+    {
+        return _evaluationRecorder.IsEnabled &&
+               _lastResult is not null &&
+               _lastExecutedTrialId != Guid.Empty &&
+               _lastExecutionWasRecorded &&
+               !_hasFeedbackForLastResult;
+    }
+
+    private void RefreshFeedbackCommands()
+    {
+        MarkResultExpectedCommand.RaiseCanExecuteChanged();
+        MarkResultUnexpectedCommand.RaiseCanExecuteChanged();
+    }
+
+    private void RecordFeedback(bool matchesExpectation)
+    {
+        if (!CanRecordFeedback())
+        {
+            return;
+        }
+
+        bool recorded = TryRecordEvaluation(
+            _lastExecutedTrialId, EvaluationStage.Feedback, true, 0,
+            _lastResult!.Query, _lastResult.Count,
+            EvaluationFailureKind.None, matchesExpectation);
+
+        if (recorded)
+        {
+            _hasFeedbackForLastResult = true;
+            RefreshFeedbackCommands();
+            EvaluationStatusText = matchesExpectation
+                ? "Evaluation: result marked as expected."
+                : "Evaluation: result marked as unexpected.";
+        }
+    }
+
+    private void ExportEvaluation()
+    {
+        try
+        {
+            string csvPath = _evaluationRecorder.ExportCsv();
+            EvaluationStatusText = $"Evaluation CSV exported: {csvPath}";
+        }
+        catch (Exception exception)
+        {
+            EvaluationStatusText = $"Could not export evaluation: {exception.Message}";
+        }
+    }
+
+    private bool TryRecordEvaluation(
+        Guid trialId,
+        EvaluationStage stage,
+        bool success,
+        long elapsedMilliseconds,
+        SemanticQuery? query,
+        int? resultCount,
+        EvaluationFailureKind failureKind,
+        bool? userConfirmedCorrect = null)
+    {
+        if (!_evaluationRecorder.IsEnabled)
+        {
+            return false;
+        }
+
+        try
+        {
+            _evaluationRecorder.Record(new EvaluationRecord
+            {
+                TrialId = trialId,
+                Stage = stage,
+                Success = success,
+                ElapsedMilliseconds = elapsedMilliseconds,
+                EntityType = query?.EntityType,
+                FilterCount = query?.Filters.Count,
+                ResultCount = resultCount,
+                ScopeSource = query?.ScopeSource,
+                SpatialRelation = query?.SpatialFilter?.Relation,
+                FailureKind = failureKind,
+                UserConfirmedCorrect = userConfirmedCorrect
+            });
+            return true;
+        }
+        catch (Exception exception)
+        {
+            // Telemetry errors must never break AutoCAD query execution.
+            EvaluationStatusText = $"Metrics recording error: {exception.GetType().Name}";
+            return false;
+        }
+    }
+
+    private static EvaluationFailureKind ClassifyFailure(Exception exception)
+    {
+        return exception switch
+        {
+            SemanticQueryValidationException => EvaluationFailureKind.Validation,
+            FormatException => EvaluationFailureKind.Input,
+            ArgumentException => EvaluationFailureKind.Input,
+            InvalidOperationException => EvaluationFailureKind.ContextOrConfiguration,
+            _ => EvaluationFailureKind.Unknown
+        };
     }
 
     private void ApplySemanticQuery(

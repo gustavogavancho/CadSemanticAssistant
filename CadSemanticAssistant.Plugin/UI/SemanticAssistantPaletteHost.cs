@@ -1,12 +1,14 @@
 using System.Drawing;
 using Autodesk.AutoCAD.Windows;
 using CadSemanticAssistant.Application.Conversation;
+using CadSemanticAssistant.Application.Evaluation;
 using CadSemanticAssistant.Application.Interaction;
 using CadSemanticAssistant.Application.NaturalLanguage;
 using CadSemanticAssistant.Application.Queries;
 using CadSemanticAssistant.Application.Queries.Validation;
 using CadSemanticAssistant.Application.Semantics.Configuration;
 using CadSemanticAssistant.Infrastructure.AI.OpenAI.NaturalLanguage;
+using CadSemanticAssistant.Infrastructure.Configuration.Evaluation;
 using CadSemanticAssistant.Infrastructure.Configuration.Semantics;
 using CadSemanticAssistant.Plugin.Infrastructure;
 using CadSemanticAssistant.Plugin.Services;
@@ -53,6 +55,9 @@ public static class SemanticAssistantPaletteHost
         IConversationContextStore conversationContextStore =
             new AutoCadConversationContextStore();
 
+        IQueryEvaluationRecorder evaluationRecorder =
+            new LocalFileEvaluationRecorder();
+
         ISemanticQuerySession querySession =
             new AutoCadSemanticQuerySession(
                 semanticEntityReader,
@@ -74,7 +79,8 @@ public static class SemanticAssistantPaletteHost
                 naturalLanguageQueryInterpreter,
                 queryValidator,
                 interactionContextProvider,
-                conversationContextStore);
+                conversationContextStore,
+                evaluationRecorder);
 
         SemanticQueryPaletteView view = new()
         {

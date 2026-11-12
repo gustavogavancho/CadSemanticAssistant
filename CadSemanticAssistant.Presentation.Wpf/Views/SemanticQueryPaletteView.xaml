@@ -387,6 +387,47 @@
 
             </WrapPanel>
 
+            <Expander
+                Header="Evaluation (optional)"
+                IsExpanded="False"
+                Foreground="#D8D8D8"
+                Margin="0,4,0,5">
+                <StackPanel Margin="6,6,0,0">
+                    <Border
+                    Margin="0,6,0,6"
+                    BorderBrush="{StaticResource DarkBorder}"
+                    BorderThickness="0,1,0,0" />
+
+                    <CheckBox
+                    Margin="0,0,0,5"
+                    IsChecked="{Binding IsEvaluationEnabled, Mode=TwoWay}"
+                    Content="Record local evaluation metrics (opt-in)" />
+
+                    <WrapPanel Orientation="Horizontal">
+                        <Button
+                        Margin="0,0,6,5"
+                        Command="{Binding MarkResultExpectedCommand}"
+                        Content="Expected result" />
+                        <Button
+                        Margin="0,0,6,5"
+                        Command="{Binding MarkResultUnexpectedCommand}"
+                        Content="Unexpected result" />
+                        <Button
+                        Margin="0,0,0,5"
+                        Command="{Binding ExportEvaluationCommand}"
+                        Content="Export metrics (CSV)" />
+                    </WrapPanel>
+
+                    <TextBlock
+                    Margin="0,2,0,4"
+                    FontSize="10"
+                    Foreground="{StaticResource DarkMuted}"
+                    TextWrapping="Wrap"
+                    Text="{Binding EvaluationStatusText, Mode=OneWay}" />
+
+                </StackPanel>
+            </Expander>
+
             <TextBlock
                 Margin="0,4,0,0"
                 FontSize="11"
