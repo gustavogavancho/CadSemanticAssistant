@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -19,6 +19,10 @@
     <ProjectReference Include="..\CadSemanticAssistant.Application\CadSemanticAssistant.Application.csproj" />
     <ProjectReference Include="..\CadSemanticAssistant.Domain\CadSemanticAssistant.Domain.csproj" />
     <ProjectReference Include="..\CadSemanticAssistant.Infrastructure.Configuration\CadSemanticAssistant.Infrastructure.Configuration.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\CadSemanticAssistant.Plugin\Configuration\catalogo_bloques.v1.json" Link="TestData\catalogo_bloques.v1.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

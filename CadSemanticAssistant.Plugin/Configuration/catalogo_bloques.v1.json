@@ -1,0 +1,510 @@
+{
+  "schemaVersion": "1.0.0",
+  "artifact": "block-catalog",
+  "domain": "almacen-industrial-2d-sintetico",
+  "status": "PROTOTYPE_SPECIFICATION_NOT_IMPLEMENTED",
+  "geometry": {
+    "coordinateSystem": "WCS-XY",
+    "units": "mm",
+    "insunitsExpected": 4,
+    "positiveX": "derecha global",
+    "positiveY": "arriba global",
+    "rotationUnit": "rad",
+    "footprintReference": "geometria local transformada segun posicion y rotacion",
+    "toleranceMm": 0.001
+  },
+  "instanceIdentity": {
+    "attribute": "INSTANCE_CODE",
+    "uniqueWithin": "document",
+    "caseInsensitive": true,
+    "requiredOnNewInsertions": true,
+    "legacyExistingWithoutCode": "allowed_for_queries_but_warning_in_audit"
+  },
+  "catalogItems": [
+    {
+      "id": "RACK_SC1_A",
+      "blockName": "RACK_SC1_A",
+      "semanticType": "Rack",
+      "displayName": "Estantería SC1",
+      "layer": "CSA_TEST_RACKS",
+      "footprint": {
+        "kind": "polygon",
+        "verticesLocalMm": [
+          [
+            0,
+            0
+          ],
+          [
+            4000,
+            0
+          ],
+          [
+            4000,
+            1000
+          ],
+          [
+            0,
+            1000
+          ]
+        ],
+        "anchor": "lower_left"
+      },
+      "attributes": [
+        {
+          "name": "INSTANCE_CODE",
+          "type": "string",
+          "requiredOnInsertion": true,
+          "pattern": "^[A-Z]{2,3}-[0-9]{3}$",
+          "unique": "drawing"
+        },
+        {
+          "name": "MODEL",
+          "type": "string",
+          "requiredOnInsertion": true,
+          "fixedValue": "SC1"
+        },
+        {
+          "name": "HEIGHT",
+          "type": "number",
+          "requiredOnInsertion": true,
+          "minimum": 5000,
+          "maximum": 12000,
+          "unit": "mm"
+        },
+        {
+          "name": "CAPACITY",
+          "type": "integer",
+          "requiredOnInsertion": true,
+          "minimum": 1,
+          "maximum": 35,
+          "unit": "posiciones"
+        }
+      ],
+      "insertionEnabled": true
+    },
+    {
+      "id": "RACK_SC2_A",
+      "blockName": "RACK_SC2_A",
+      "semanticType": "Rack",
+      "displayName": "Estantería SC2",
+      "layer": "CSA_TEST_RACKS",
+      "footprint": {
+        "kind": "polygon",
+        "verticesLocalMm": [
+          [
+            0,
+            0
+          ],
+          [
+            4000,
+            0
+          ],
+          [
+            4000,
+            1000
+          ],
+          [
+            0,
+            1000
+          ]
+        ],
+        "anchor": "lower_left"
+      },
+      "attributes": [
+        {
+          "name": "INSTANCE_CODE",
+          "type": "string",
+          "requiredOnInsertion": true,
+          "pattern": "^[A-Z]{2,3}-[0-9]{3}$",
+          "unique": "drawing"
+        },
+        {
+          "name": "MODEL",
+          "type": "string",
+          "requiredOnInsertion": true,
+          "fixedValue": "SC2"
+        },
+        {
+          "name": "HEIGHT",
+          "type": "number",
+          "requiredOnInsertion": true,
+          "minimum": 8000,
+          "maximum": 18000,
+          "unit": "mm"
+        },
+        {
+          "name": "CAPACITY",
+          "type": "integer",
+          "requiredOnInsertion": true,
+          "minimum": 1,
+          "maximum": 60,
+          "unit": "posiciones"
+        }
+      ],
+      "insertionEnabled": true
+    },
+    {
+      "id": "RACK_SC3_A",
+      "blockName": "RACK_SC3_A",
+      "semanticType": "Rack",
+      "displayName": "Estantería SC3",
+      "layer": "CSA_TEST_RACKS",
+      "footprint": {
+        "kind": "polygon",
+        "verticesLocalMm": [
+          [
+            0,
+            0
+          ],
+          [
+            4000,
+            0
+          ],
+          [
+            4000,
+            1000
+          ],
+          [
+            0,
+            1000
+          ]
+        ],
+        "anchor": "lower_left"
+      },
+      "attributes": [
+        {
+          "name": "INSTANCE_CODE",
+          "type": "string",
+          "requiredOnInsertion": true,
+          "pattern": "^[A-Z]{2,3}-[0-9]{3}$",
+          "unique": "drawing"
+        },
+        {
+          "name": "MODEL",
+          "type": "string",
+          "requiredOnInsertion": true,
+          "fixedValue": "SC3"
+        },
+        {
+          "name": "HEIGHT",
+          "type": "number",
+          "requiredOnInsertion": true,
+          "minimum": 10000,
+          "maximum": 18000,
+          "unit": "mm"
+        },
+        {
+          "name": "CAPACITY",
+          "type": "integer",
+          "requiredOnInsertion": true,
+          "minimum": 1,
+          "maximum": 60,
+          "unit": "posiciones"
+        }
+      ],
+      "insertionEnabled": true
+    },
+    {
+      "id": "MACHINE_A",
+      "blockName": "MACHINE_A",
+      "semanticType": "Machine",
+      "displayName": "Máquina MX100 · Miniload",
+      "layer": "CSA_TEST_MACHINES",
+      "footprint": {
+        "kind": "circle",
+        "centerLocalMm": [
+          0,
+          0
+        ],
+        "radiusMm": 1000,
+        "anchor": "center"
+      },
+      "attributes": [
+        {
+          "name": "INSTANCE_CODE",
+          "type": "string",
+          "requiredOnInsertion": true,
+          "pattern": "^[A-Z]{2,3}-[0-9]{3}$",
+          "unique": "drawing"
+        },
+        {
+          "name": "MODEL",
+          "type": "string",
+          "requiredOnInsertion": true,
+          "fixedValue": "MX100"
+        },
+        {
+          "name": "TYPE",
+          "type": "string",
+          "requiredOnInsertion": true,
+          "fixedValue": "Miniload"
+        }
+      ],
+      "insertionEnabled": true
+    },
+    {
+      "id": "MACHINE_B",
+      "blockName": "MACHINE_B",
+      "semanticType": "Machine",
+      "displayName": "Máquina MX200 · StackerCrane",
+      "layer": "CSA_TEST_MACHINES",
+      "footprint": {
+        "kind": "circle",
+        "centerLocalMm": [
+          0,
+          0
+        ],
+        "radiusMm": 1000,
+        "anchor": "center"
+      },
+      "attributes": [
+        {
+          "name": "INSTANCE_CODE",
+          "type": "string",
+          "requiredOnInsertion": true,
+          "pattern": "^[A-Z]{2,3}-[0-9]{3}$",
+          "unique": "drawing"
+        },
+        {
+          "name": "MODEL",
+          "type": "string",
+          "requiredOnInsertion": true,
+          "fixedValue": "MX200"
+        },
+        {
+          "name": "TYPE",
+          "type": "string",
+          "requiredOnInsertion": true,
+          "fixedValue": "StackerCrane"
+        }
+      ],
+      "insertionEnabled": true
+    },
+    {
+      "id": "MACHINE_C",
+      "blockName": "MACHINE_C",
+      "semanticType": "Machine",
+      "displayName": "Máquina MX300 · PalletShuttle",
+      "layer": "CSA_TEST_MACHINES",
+      "footprint": {
+        "kind": "polygon",
+        "verticesLocalMm": [
+          [
+            -1500.0,
+            -800.0
+          ],
+          [
+            1500.0,
+            -800.0
+          ],
+          [
+            1500.0,
+            800.0
+          ],
+          [
+            -1500.0,
+            800.0
+          ]
+        ],
+        "anchor": "center"
+      },
+      "attributes": [
+        {
+          "name": "INSTANCE_CODE",
+          "type": "string",
+          "requiredOnInsertion": true,
+          "pattern": "^[A-Z]{2,3}-[0-9]{3}$",
+          "unique": "drawing"
+        },
+        {
+          "name": "MODEL",
+          "type": "string",
+          "requiredOnInsertion": true,
+          "fixedValue": "MX300"
+        },
+        {
+          "name": "TYPE",
+          "type": "string",
+          "requiredOnInsertion": true,
+          "fixedValue": "PalletShuttle"
+        }
+      ],
+      "insertionEnabled": true
+    },
+    {
+      "id": "MACHINE_D",
+      "blockName": "MACHINE_D",
+      "semanticType": "Machine",
+      "displayName": "Máquina MX400 · TransferUnit",
+      "layer": "CSA_TEST_MACHINES",
+      "footprint": {
+        "kind": "polygon",
+        "verticesLocalMm": [
+          [
+            -1250.0,
+            -900.0
+          ],
+          [
+            1250.0,
+            -900.0
+          ],
+          [
+            1250.0,
+            900.0
+          ],
+          [
+            -1250.0,
+            900.0
+          ]
+        ],
+        "anchor": "center"
+      },
+      "attributes": [
+        {
+          "name": "INSTANCE_CODE",
+          "type": "string",
+          "requiredOnInsertion": true,
+          "pattern": "^[A-Z]{2,3}-[0-9]{3}$",
+          "unique": "drawing"
+        },
+        {
+          "name": "MODEL",
+          "type": "string",
+          "requiredOnInsertion": true,
+          "fixedValue": "MX400"
+        },
+        {
+          "name": "TYPE",
+          "type": "string",
+          "requiredOnInsertion": true,
+          "fixedValue": "TransferUnit"
+        }
+      ],
+      "insertionEnabled": true
+    },
+    {
+      "id": "BEACON_A",
+      "blockName": "BEACON_A",
+      "semanticType": "Complement",
+      "displayName": "Baliza luminosa",
+      "layer": "CSA_TEST_COMPLEMENTS",
+      "footprint": {
+        "kind": "circle",
+        "centerLocalMm": [
+          0,
+          0
+        ],
+        "radiusMm": 150,
+        "anchor": "center"
+      },
+      "attributes": [
+        {
+          "name": "INSTANCE_CODE",
+          "type": "string",
+          "requiredOnInsertion": true,
+          "pattern": "^[A-Z]{2,3}-[0-9]{3}$",
+          "unique": "drawing"
+        },
+        {
+          "name": "PARENT_CODE",
+          "type": "string",
+          "requiredOnInsertion": true,
+          "referenceType": "Machine"
+        },
+        {
+          "name": "COLOR",
+          "type": "string",
+          "requiredOnInsertion": true,
+          "allowedValues": [
+            "Amber",
+            "Green",
+            "Red"
+          ]
+        },
+        {
+          "name": "MODE",
+          "type": "string",
+          "requiredOnInsertion": true,
+          "allowedValues": [
+            "Steady",
+            "Flash"
+          ]
+        }
+      ],
+      "insertionEnabled": true,
+      "allowedParentModels": [
+        "MX100",
+        "MX200",
+        "MX300",
+        "MX400"
+      ]
+    },
+    {
+      "id": "BUTTON_STATION_A",
+      "blockName": "BUTTON_STATION_A",
+      "semanticType": "Complement",
+      "displayName": "Botonera de control",
+      "layer": "CSA_TEST_COMPLEMENTS",
+      "footprint": {
+        "kind": "polygon",
+        "verticesLocalMm": [
+          [
+            -200.0,
+            -150.0
+          ],
+          [
+            200.0,
+            -150.0
+          ],
+          [
+            200.0,
+            150.0
+          ],
+          [
+            -200.0,
+            150.0
+          ]
+        ],
+        "anchor": "center"
+      },
+      "attributes": [
+        {
+          "name": "INSTANCE_CODE",
+          "type": "string",
+          "requiredOnInsertion": true,
+          "pattern": "^[A-Z]{2,3}-[0-9]{3}$",
+          "unique": "drawing"
+        },
+        {
+          "name": "PARENT_CODE",
+          "type": "string",
+          "requiredOnInsertion": true,
+          "referenceType": "Machine"
+        },
+        {
+          "name": "BUTTONS",
+          "type": "integer",
+          "requiredOnInsertion": true,
+          "minimum": 1,
+          "maximum": 4
+        },
+        {
+          "name": "FUNCTION",
+          "type": "string",
+          "requiredOnInsertion": true,
+          "allowedValues": [
+            "StartStop",
+            "Reset",
+            "Acknowledge"
+          ]
+        }
+      ],
+      "insertionEnabled": true,
+      "allowedParentModels": [
+        "MX100",
+        "MX200",
+        "MX400"
+      ]
+    }
+  ]
+}

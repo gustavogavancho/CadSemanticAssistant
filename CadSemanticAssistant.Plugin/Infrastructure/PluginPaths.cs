@@ -16,4 +16,6 @@ public static class PluginPaths
     }
 
     public static string SemanticMappingConfiguration => Path.Combine(PluginDirectory, "Config", "semantic-mapping.json");
+
+    public static string BlockCatalogConfiguration => Path.Combine(PluginDirectory, "Config", "catalogo_bloques.v1.json");
 }

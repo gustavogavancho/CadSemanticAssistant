@@ -33,7 +33,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Configuration\" />
+    <None Update="Configuration\catalogo_bloques.v1.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>Config\catalogo_bloques.v1.json</TargetPath>
+    </None>
   </ItemGroup>
 
   <ItemGroup>
