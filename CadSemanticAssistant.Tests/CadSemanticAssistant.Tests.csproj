@@ -29,4 +29,8 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="..\CadSemanticAssistant.Plugin\Configuration\reglas_dominio.v1.json" Link="TestData\reglas_dominio.v1.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

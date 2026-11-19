@@ -1,0 +1,324 @@
+{
+  "schemaVersion": "1.0.0",
+  "artifact": "domain-rules",
+  "catalogVersion": "1.0.0",
+  "domain": "almacen-industrial-2d-sintetico",
+  "policies": {
+    "missingParent": "BLOCK",
+    "unknownUnits": "BLOCK",
+    "unknownModel": "BLOCK",
+    "unknownExistingBlock": "IGNORED_UNLESS_INTERSECTS_OPERATION_FOOTPRINT",
+    "existingLegacyWithoutCode": "WARN_NOT_DELETE",
+    "hardConstraintCannotBeWeakenedWithoutExplicitUserApproval": true,
+    "repairMayNotModifyAlreadyExistingBlocks": true,
+    "revalidateBeforeCommit": true,
+    "transactionAllOrNothing": true,
+    "semanticOrGeometryConflictOnProposal": "NO_INSERTION"
+  },
+  "operationsAllowed": [
+    "InsertBlock"
+  ],
+  "rules": [
+    {
+      "code": "SEM-001",
+      "name": "Modelo autorizado",
+      "kind": "semantic",
+      "severity": "BLOCK",
+      "scope": "proposed",
+      "definition": "blockName in catalogItems and insertionEnabled=true",
+      "parameters": {},
+      "permittedRepairStrategies": [
+        "suggest_available_models"
+      ]
+    },
+    {
+      "code": "SEM-002",
+      "name": "Atributos obligatorios",
+      "kind": "semantic",
+      "severity": "BLOCK",
+      "scope": "proposed",
+      "definition": "Every attribute marked requiredOnInsertion exists, has nonblank value and correct primitive type.",
+      "parameters": {},
+      "permittedRepairStrategies": [
+        "ask_missing_value"
+      ]
+    },
+    {
+      "code": "SEM-003",
+      "name": "Valor y dominio de atributos",
+      "kind": "semantic",
+      "severity": "BLOCK",
+      "scope": "proposed",
+      "definition": "fixedValue, allowedValues, pattern, min and max are satisfied; unknown proposed attributes rejected.",
+      "parameters": {},
+      "permittedRepairStrategies": [
+        "ask_valid_value",
+        "suggest_allowed_values"
+      ]
+    },
+    {
+      "code": "SEM-004",
+      "name": "Código de instancia único",
+      "kind": "semantic",
+      "severity": "BLOCK",
+      "scope": "whole-drawing",
+      "definition": "Normalized INSTANCE_CODE is unique among existing and proposed instances; case-insensitive.",
+      "parameters": {},
+      "permittedRepairStrategies": [
+        "propose_unused_instance_code"
+      ]
+    },
+    {
+      "code": "SEM-005",
+      "name": "Cantidad de inserciones",
+      "kind": "semantic",
+      "severity": "BLOCK",
+      "scope": "request",
+      "definition": "1 <= proposed count <= 6.",
+      "parameters": {
+        "min": 1,
+        "max": 6
+      },
+      "permittedRepairStrategies": [
+        "ask_reduce_quantity"
+      ]
+    },
+    {
+      "code": "SEM-006",
+      "name": "Complemento con padre válido",
+      "kind": "semantic",
+      "severity": "BLOCK",
+      "scope": "proposed-complement",
+      "definition": "PARENT_CODE resolves one existing or proposed Machine; never to Rack or Complement.",
+      "parameters": {},
+      "permittedRepairStrategies": [
+        "ask_select_parent"
+      ]
+    },
+    {
+      "code": "SEM-007",
+      "name": "Compatibilidad complemento-máquina",
+      "kind": "semantic",
+      "severity": "BLOCK",
+      "scope": "proposed-complement",
+      "definition": "Machine MODEL in complement.allowedParentModels.",
+      "parameters": {},
+      "permittedRepairStrategies": [
+        "suggest_compatible_machine",
+        "change_complement_with_approval"
+      ]
+    },
+    {
+      "code": "SEM-008",
+      "name": "Máximo complemento por máquina",
+      "kind": "semantic",
+      "severity": "BLOCK",
+      "scope": "whole-drawing",
+      "definition": "At most one BEACON_A and one BUTTON_STATION_A per parent MACHINE by PARENT_CODE.",
+      "parameters": {
+        "maxPerTypePerParent": 1
+      },
+      "permittedRepairStrategies": [
+        "choose_other_parent",
+        "cancel"
+      ]
+    },
+    {
+      "code": "GEO-001",
+      "name": "Unidades conocidas",
+      "kind": "geometric",
+      "severity": "BLOCK",
+      "scope": "drawing",
+      "definition": "INSUNITS=4 (millimeters) for experimental drawings; no guess when unitless/unknown.",
+      "parameters": {
+        "requiredInsunits": 4
+      },
+      "permittedRepairStrategies": [
+        "ask_convert_or_define_units"
+      ]
+    },
+    {
+      "code": "GEO-002",
+      "name": "Dentro del área de trabajo",
+      "kind": "geometric",
+      "severity": "BLOCK",
+      "scope": "proposed",
+      "definition": "Every footprint remains inside ZONE_ALLOWED and, when the request targets a named zone, also entirely inside that named target zone; borders inclusive.",
+      "parameters": {
+        "allowedZone": "ZONE_ALLOWED",
+        "namedTargetZoneIfRequested": true
+      },
+      "permittedRepairStrategies": [
+        "translate",
+        "rotate"
+      ]
+    },
+    {
+      "code": "GEO-003",
+      "name": "Fuera de zonas prohibidas",
+      "kind": "geometric",
+      "severity": "BLOCK",
+      "scope": "proposed",
+      "definition": "Footprints must not overlap any forbidden-zone polygon; boundary touching counts as allowed.",
+      "parameters": {
+        "forbiddenZoneLayer": "CSA_ZONE_FORBIDDEN"
+      },
+      "permittedRepairStrategies": [
+        "translate",
+        "rotate"
+      ]
+    },
+    {
+      "code": "GEO-004",
+      "name": "No intersección de entidades",
+      "kind": "geometric",
+      "severity": "BLOCK",
+      "scope": "proposed-against-all",
+      "definition": "No interior overlap between occupied footprints (including proposed versus proposed).",
+      "parameters": {
+        "boundaryTouchAllowed": true
+      },
+      "permittedRepairStrategies": [
+        "translate",
+        "rotate"
+      ]
+    },
+    {
+      "code": "GEO-005",
+      "name": "Separación Rack-Rack",
+      "kind": "geometric",
+      "severity": "BLOCK",
+      "scope": "proposed-vs-rack",
+      "definition": "Minimum Euclidean footprint distance Rack-Rack >= 500 mm.",
+      "parameters": {
+        "minimumDistanceMm": 500
+      },
+      "permittedRepairStrategies": [
+        "translate",
+        "rotate"
+      ]
+    },
+    {
+      "code": "GEO-006",
+      "name": "Separación Rack-Machine",
+      "kind": "geometric",
+      "severity": "BLOCK",
+      "scope": "proposed-vs-rack-machine",
+      "definition": "Minimum Euclidean footprint distance Rack-Machine >= 1000 mm.",
+      "parameters": {
+        "minimumDistanceMm": 1000
+      },
+      "permittedRepairStrategies": [
+        "translate",
+        "rotate"
+      ]
+    },
+    {
+      "code": "GEO-007",
+      "name": "Separación Machine-Machine",
+      "kind": "geometric",
+      "severity": "BLOCK",
+      "scope": "proposed-vs-machine",
+      "definition": "Minimum Euclidean footprint distance Machine-Machine >= 1500 mm.",
+      "parameters": {
+        "minimumDistanceMm": 1500
+      },
+      "permittedRepairStrategies": [
+        "translate",
+        "rotate"
+      ]
+    },
+    {
+      "code": "GEO-008",
+      "name": "Distancia Beacon a su padre",
+      "kind": "geometric",
+      "severity": "BLOCK",
+      "scope": "proposed-beacon",
+      "definition": "Perimeter gap between beacon footprint and parent machine footprint is [100,1200] mm.",
+      "parameters": {
+        "minimumDistanceMm": 100,
+        "maximumDistanceMm": 1200
+      },
+      "permittedRepairStrategies": [
+        "translate_around_parent"
+      ]
+    },
+    {
+      "code": "GEO-009",
+      "name": "Distancia Botonera a su padre",
+      "kind": "geometric",
+      "severity": "BLOCK",
+      "scope": "proposed-button",
+      "definition": "Perimeter gap between button-station footprint and parent machine footprint is [500,2000] mm.",
+      "parameters": {
+        "minimumDistanceMm": 500,
+        "maximumDistanceMm": 2000
+      },
+      "permittedRepairStrategies": [
+        "translate_around_parent"
+      ]
+    },
+    {
+      "code": "GEO-010",
+      "name": "Separación complemento ajeno",
+      "kind": "geometric",
+      "severity": "BLOCK",
+      "scope": "proposed-complement",
+      "definition": "Complement cannot overlap any other entity, including a different host; no 1m rack-machine rule is transferred to accessory.",
+      "parameters": {},
+      "permittedRepairStrategies": [
+        "translate"
+      ]
+    },
+    {
+      "code": "OP-001",
+      "name": "Referencias y ambigüedad",
+      "kind": "interactive",
+      "severity": "CLARIFY",
+      "scope": "request",
+      "definition": "Spatial direction/frame, distance or selected reference must be specified for relation-dependent placement.",
+      "parameters": {},
+      "permittedRepairStrategies": [
+        "ask_clarification"
+      ]
+    },
+    {
+      "code": "OP-002",
+      "name": "Restricciones duras vs. preferencias",
+      "kind": "interactive",
+      "severity": "BLOCK",
+      "scope": "repair",
+      "definition": "Do not alter hard quantity, parent, attribute identity or exclusion zone without explicit user authorization.",
+      "parameters": {},
+      "permittedRepairStrategies": [
+        "ask_permission",
+        "cancel"
+      ]
+    },
+    {
+      "code": "OP-003",
+      "name": "Revalidación del documento",
+      "kind": "operational",
+      "severity": "BLOCK",
+      "scope": "commit",
+      "definition": "Invalidate proposals if drawing changed; recalculate and revalidate under document lock immediately before AutoCAD transaction.",
+      "parameters": {},
+      "permittedRepairStrategies": [
+        "replan",
+        "ask_user_confirmation"
+      ]
+    },
+    {
+      "code": "OP-004",
+      "name": "Confirmación y atomicidad",
+      "kind": "operational",
+      "severity": "BLOCK",
+      "scope": "commit",
+      "definition": "No write until explicit confirmation; all intended inserts commit in one transaction or rollback.",
+      "parameters": {},
+      "permittedRepairStrategies": [
+        "cancel"
+      ]
+    }
+  ]
+}

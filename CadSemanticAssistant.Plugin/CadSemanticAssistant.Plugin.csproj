@@ -46,4 +46,11 @@
     </None>
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Configuration\reglas_dominio.v1.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>Config\reglas_dominio.v1.json</TargetPath>
+    </None>
+  </ItemGroup>
+
 </Project>
