@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="CadSemanticAssistant.Application/CadSemanticAssistant.Application.csproj" Id="6a042426-73b7-4817-b978-1f4d61159298" />
+    <Project Path="CadSemanticAssistant.Benchmarks/CadSemanticAssistant.Benchmarks.csproj" Id="5ca4f811-d7a3-416d-bcd3-264f7415450c" />
     <Project Path="CadSemanticAssistant.Domain/CadSemanticAssistant.Domain.csproj" Id="27cc24e4-54c4-4e7e-a0fa-87c0b0e575a6" />
     <Project Path="CadSemanticAssistant.Infrastructure.AI.OpenAI/CadSemanticAssistant.Infrastructure.AI.OpenAI.csproj" Id="21d906ef-2a43-4e72-ac0f-1822dd0e6826" />
     <Project Path="CadSemanticAssistant.Infrastructure.AutoCAD/CadSemanticAssistant.Infrastructure.AutoCAD.csproj" Id="10e7cd62-601b-4d4e-ad54-216b1df349ac" />
@@ -14,5 +15,8 @@
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />
     <File Path="Directory.Build.props" />
+  </Folder>
+    <Folder Name="/scripts/">
+    <File Path="Run-SemanticBenchmark.ps1" />
   </Folder>
 </Solution>

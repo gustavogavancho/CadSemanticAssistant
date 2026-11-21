@@ -33,4 +33,8 @@
     <None Include="..\CadSemanticAssistant.Plugin\Configuration\reglas_dominio.v1.json" Link="TestData\reglas_dominio.v1.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="..\CadSemanticAssistant.Benchmarks\TestData\benchmark_semantico.v1.json" Link="TestData\benchmark_semantico.v1.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

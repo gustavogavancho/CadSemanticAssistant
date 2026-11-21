@@ -1,0 +1,587 @@
+{
+  "schemaVersion": "1.0.0",
+  "datasetId": "CSA-SEM-v1.2-A3",
+  "description": "Casos de aceptación semántica con solicitudes ya estructuradas; NO evalúan interpretación del lenguaje natural ni geometría.",
+  "provenance": {
+    "scenarioCsv": "escenarios_v1.csv",
+    "scenarioCsvSha256": "b4be3541f3d18c2dd5423bdd94ee56d59fbf66aeee1597aa9f264ea0b66f9ecf",
+    "drawing": "S00_base.dxf",
+    "drawingSha256": "f3d0b8d33cada1d2b98711493a10cd5ccdc0655ec1bd3ab99b5d30d91215260f",
+    "snapshotFormat": "BlockName + Attributes of INSERT entities in Model Space",
+    "expectedInsunits": 4,
+    "sourceCases": 14,
+    "supplementaryCases": 3
+  },
+  "sceneSnapshots": {
+    "S00_BASE": [
+      {
+        "blockName": "RACK_SC2_A",
+        "attributes": {
+          "INSTANCE_CODE": "RK-001",
+          "MODEL": "SC2",
+          "HEIGHT": "12000",
+          "CAPACITY": "40"
+        }
+      },
+      {
+        "blockName": "RACK_SC2_A",
+        "attributes": {
+          "INSTANCE_CODE": "RK-002",
+          "MODEL": "SC2",
+          "HEIGHT": "9000",
+          "CAPACITY": "30"
+        }
+      },
+      {
+        "blockName": "RACK_SC2_A",
+        "attributes": {
+          "INSTANCE_CODE": "RK-003",
+          "MODEL": "SC2",
+          "HEIGHT": "15000",
+          "CAPACITY": "50"
+        }
+      },
+      {
+        "blockName": "RACK_SC1_A",
+        "attributes": {
+          "INSTANCE_CODE": "RK-004",
+          "MODEL": "SC1",
+          "HEIGHT": "8000",
+          "CAPACITY": "20"
+        }
+      },
+      {
+        "blockName": "RACK_SC1_A",
+        "attributes": {
+          "INSTANCE_CODE": "RK-005",
+          "MODEL": "SC1",
+          "HEIGHT": "11000",
+          "CAPACITY": "25"
+        }
+      },
+      {
+        "blockName": "RACK_SC3_A",
+        "attributes": {
+          "INSTANCE_CODE": "RK-006",
+          "MODEL": "SC3",
+          "HEIGHT": "14000",
+          "CAPACITY": "45"
+        }
+      },
+      {
+        "blockName": "MACHINE_A",
+        "attributes": {
+          "INSTANCE_CODE": "MC-001",
+          "MODEL": "MX100",
+          "TYPE": "Miniload"
+        }
+      },
+      {
+        "blockName": "MACHINE_B",
+        "attributes": {
+          "INSTANCE_CODE": "MC-002",
+          "MODEL": "MX200",
+          "TYPE": "StackerCrane"
+        }
+      },
+      {
+        "blockName": "MACHINE_C",
+        "attributes": {
+          "INSTANCE_CODE": "MC-003",
+          "MODEL": "MX300",
+          "TYPE": "PalletShuttle"
+        }
+      },
+      {
+        "blockName": "MACHINE_D",
+        "attributes": {
+          "INSTANCE_CODE": "MC-004",
+          "MODEL": "MX400",
+          "TYPE": "TransferUnit"
+        }
+      },
+      {
+        "blockName": "BEACON_A",
+        "attributes": {
+          "INSTANCE_CODE": "CP-001",
+          "PARENT_CODE": "MC-001",
+          "COLOR": "Amber",
+          "MODE": "Flash"
+        }
+      },
+      {
+        "blockName": "BUTTON_STATION_A",
+        "attributes": {
+          "INSTANCE_CODE": "CP-002",
+          "PARENT_CODE": "MC-002",
+          "BUTTONS": "2",
+          "FUNCTION": "StartStop"
+        }
+      }
+    ]
+  },
+  "cases": [
+    {
+      "caseId": "T01",
+      "sourceScenarioId": "T01",
+      "sourceCategory": "valida",
+      "userUtterance": "Inserta un rack SC2 en X=0, Y=16500 mm con altura 12 m y capacidad 40.",
+      "sceneId": "S00_BASE",
+      "expectedDecision": "VALID",
+      "expectedRuleCodes": [],
+      "proposed": [
+        {
+          "blockName": "RACK_SC2_A",
+          "attributes": {
+            "INSTANCE_CODE": "RK-101",
+            "MODEL": "SC2",
+            "HEIGHT": "12000",
+            "CAPACITY": "40"
+          }
+        }
+      ]
+    },
+    {
+      "caseId": "T02",
+      "sourceScenarioId": "T02",
+      "sourceCategory": "valida",
+      "userUtterance": "Inserta dos racks SC2 en X=0 y X=6000, Y=16500 mm, altura 12 m y capacidad 40.",
+      "sceneId": "S00_BASE",
+      "expectedDecision": "VALID",
+      "expectedRuleCodes": [],
+      "proposed": [
+        {
+          "blockName": "RACK_SC2_A",
+          "attributes": {
+            "INSTANCE_CODE": "RK-101",
+            "MODEL": "SC2",
+            "HEIGHT": "12000",
+            "CAPACITY": "40"
+          }
+        },
+        {
+          "blockName": "RACK_SC2_A",
+          "attributes": {
+            "INSTANCE_CODE": "RK-102",
+            "MODEL": "SC2",
+            "HEIGHT": "12000",
+            "CAPACITY": "40"
+          }
+        }
+      ]
+    },
+    {
+      "caseId": "T03",
+      "sourceScenarioId": "T03",
+      "sourceCategory": "valida",
+      "userUtterance": "Añade una baliza ámbar de modo fijo a MACHINE_C, en X=28900 Y=11000.",
+      "sceneId": "S00_BASE",
+      "expectedDecision": "VALID",
+      "expectedRuleCodes": [],
+      "proposed": [
+        {
+          "blockName": "BEACON_A",
+          "attributes": {
+            "INSTANCE_CODE": "CP-101",
+            "PARENT_CODE": "MC-003",
+            "COLOR": "Amber",
+            "MODE": "Steady"
+          }
+        }
+      ]
+    },
+    {
+      "caseId": "T04",
+      "sourceScenarioId": "T04",
+      "sourceCategory": "valida",
+      "userUtterance": "Añade una botonera de 2 pulsadores de Reset a MACHINE_D en X=32000 Y=2000.",
+      "sceneId": "S00_BASE",
+      "expectedDecision": "VALID",
+      "expectedRuleCodes": [],
+      "proposed": [
+        {
+          "blockName": "BUTTON_STATION_A",
+          "attributes": {
+            "INSTANCE_CODE": "CP-102",
+            "PARENT_CODE": "MC-004",
+            "BUTTONS": "2",
+            "FUNCTION": "Reset"
+          }
+        }
+      ]
+    },
+    {
+      "caseId": "T05",
+      "sourceScenarioId": "T05",
+      "sourceCategory": "semantica",
+      "userUtterance": "Inserta un rack SC2 con código RK-001 en X=0 Y=16500.",
+      "sceneId": "S00_BASE",
+      "expectedDecision": "REJECT",
+      "expectedRuleCodes": [
+        "SEM-004"
+      ],
+      "proposed": [
+        {
+          "blockName": "RACK_SC2_A",
+          "attributes": {
+            "INSTANCE_CODE": "RK-001",
+            "MODEL": "SC2",
+            "HEIGHT": "12000",
+            "CAPACITY": "40"
+          }
+        }
+      ]
+    },
+    {
+      "caseId": "T06",
+      "sourceScenarioId": "T06",
+      "sourceCategory": "semantica",
+      "userUtterance": "Inserta un rack SC2 sin definir su altura en X=0 Y=16500.",
+      "sceneId": "S00_BASE",
+      "expectedDecision": "REJECT",
+      "expectedRuleCodes": [
+        "SEM-002"
+      ],
+      "proposed": [
+        {
+          "blockName": "RACK_SC2_A",
+          "attributes": {
+            "INSTANCE_CODE": "RK-106",
+            "MODEL": "SC2",
+            "CAPACITY": "40"
+          }
+        }
+      ]
+    },
+    {
+      "caseId": "T07",
+      "sourceScenarioId": "T07",
+      "sourceCategory": "semantica",
+      "userUtterance": "Inserta un rack SC2 de 21 metros de altura en X=0 Y=16500.",
+      "sceneId": "S00_BASE",
+      "expectedDecision": "REJECT",
+      "expectedRuleCodes": [
+        "SEM-003"
+      ],
+      "proposed": [
+        {
+          "blockName": "RACK_SC2_A",
+          "attributes": {
+            "INSTANCE_CODE": "RK-107",
+            "MODEL": "SC2",
+            "HEIGHT": "21000",
+            "CAPACITY": "40"
+          }
+        }
+      ]
+    },
+    {
+      "caseId": "T08",
+      "sourceScenarioId": "T08",
+      "sourceCategory": "semantica",
+      "userUtterance": "Inserta un rack SC2 con capacidad cero en X=0 Y=16500.",
+      "sceneId": "S00_BASE",
+      "expectedDecision": "REJECT",
+      "expectedRuleCodes": [
+        "SEM-003"
+      ],
+      "proposed": [
+        {
+          "blockName": "RACK_SC2_A",
+          "attributes": {
+            "INSTANCE_CODE": "RK-108",
+            "MODEL": "SC2",
+            "HEIGHT": "12000",
+            "CAPACITY": "0"
+          }
+        }
+      ]
+    },
+    {
+      "caseId": "T09",
+      "sourceScenarioId": "T09",
+      "sourceCategory": "semantica",
+      "userUtterance": "Inserta bloque RACK_SC2_A con MODEL=SC3 en X=0 Y=16500.",
+      "sceneId": "S00_BASE",
+      "expectedDecision": "REJECT",
+      "expectedRuleCodes": [
+        "SEM-003"
+      ],
+      "proposed": [
+        {
+          "blockName": "RACK_SC2_A",
+          "attributes": {
+            "INSTANCE_CODE": "RK-109",
+            "MODEL": "SC3",
+            "HEIGHT": "12000",
+            "CAPACITY": "40"
+          }
+        }
+      ]
+    },
+    {
+      "caseId": "T10",
+      "sourceScenarioId": "T10",
+      "sourceCategory": "semantica",
+      "userUtterance": "Inserta el modelo de rack RACK_SC9_A en X=0 Y=16500.",
+      "sceneId": "S00_BASE",
+      "expectedDecision": "REJECT",
+      "expectedRuleCodes": [
+        "SEM-001"
+      ],
+      "proposed": [
+        {
+          "blockName": "RACK_SC9_A",
+          "attributes": {
+            "INSTANCE_CODE": "RK-110",
+            "MODEL": "SC2",
+            "HEIGHT": "12000",
+            "CAPACITY": "40"
+          }
+        }
+      ]
+    },
+    {
+      "caseId": "T11",
+      "sourceScenarioId": "T11",
+      "sourceCategory": "complemento",
+      "userUtterance": "Asigna esta baliza al rack RK-001.",
+      "sceneId": "S00_BASE",
+      "expectedDecision": "REJECT",
+      "expectedRuleCodes": [
+        "SEM-006"
+      ],
+      "proposed": [
+        {
+          "blockName": "BEACON_A",
+          "attributes": {
+            "INSTANCE_CODE": "CP-111",
+            "PARENT_CODE": "RK-001",
+            "COLOR": "Amber",
+            "MODE": "Steady"
+          }
+        }
+      ]
+    },
+    {
+      "caseId": "T12",
+      "sourceScenarioId": "T12",
+      "sourceCategory": "complemento",
+      "userUtterance": "Añade una botonera de reset a MACHINE_C en X=29400, Y=11000.",
+      "sceneId": "S00_BASE",
+      "expectedDecision": "REJECT",
+      "expectedRuleCodes": [
+        "SEM-007"
+      ],
+      "proposed": [
+        {
+          "blockName": "BUTTON_STATION_A",
+          "attributes": {
+            "INSTANCE_CODE": "CP-112",
+            "PARENT_CODE": "MC-003",
+            "BUTTONS": "2",
+            "FUNCTION": "Reset"
+          }
+        }
+      ]
+    },
+    {
+      "caseId": "T13",
+      "sourceScenarioId": "T13",
+      "sourceCategory": "complemento",
+      "userUtterance": "Añade otra baliza a MACHINE_A en X=4700,Y=12000.",
+      "sceneId": "S00_BASE",
+      "expectedDecision": "REJECT",
+      "expectedRuleCodes": [
+        "SEM-008"
+      ],
+      "proposed": [
+        {
+          "blockName": "BEACON_A",
+          "attributes": {
+            "INSTANCE_CODE": "CP-113",
+            "PARENT_CODE": "MC-001",
+            "COLOR": "Amber",
+            "MODE": "Steady"
+          }
+        }
+      ]
+    },
+    {
+      "caseId": "T30",
+      "sourceScenarioId": "T30",
+      "sourceCategory": "semantica",
+      "userUtterance": "Inserta rack SC2 con un campo inventado SERIAL_NO y propiedades válidas.",
+      "sceneId": "S00_BASE",
+      "expectedDecision": "REJECT",
+      "expectedRuleCodes": [
+        "SEM-003"
+      ],
+      "proposed": [
+        {
+          "blockName": "RACK_SC2_A",
+          "attributes": {
+            "INSTANCE_CODE": "RK-130",
+            "MODEL": "SC2",
+            "HEIGHT": "12000",
+            "CAPACITY": "40",
+            "SERIAL_NO": "SYNTHETIC"
+          }
+        }
+      ]
+    },
+    {
+      "caseId": "B01",
+      "sourceScenarioId": null,
+      "sourceCategory": "limite_semantico",
+      "userUtterance": "Caso sintético: lote de 7 racks.",
+      "sceneId": "S00_BASE",
+      "expectedDecision": "REJECT",
+      "expectedRuleCodes": [
+        "SEM-005"
+      ],
+      "proposed": [
+        {
+          "blockName": "RACK_SC2_A",
+          "attributes": {
+            "INSTANCE_CODE": "BK-001",
+            "MODEL": "SC2",
+            "HEIGHT": "9000",
+            "CAPACITY": "10"
+          }
+        },
+        {
+          "blockName": "RACK_SC2_A",
+          "attributes": {
+            "INSTANCE_CODE": "BK-002",
+            "MODEL": "SC2",
+            "HEIGHT": "9000",
+            "CAPACITY": "10"
+          }
+        },
+        {
+          "blockName": "RACK_SC2_A",
+          "attributes": {
+            "INSTANCE_CODE": "BK-003",
+            "MODEL": "SC2",
+            "HEIGHT": "9000",
+            "CAPACITY": "10"
+          }
+        },
+        {
+          "blockName": "RACK_SC2_A",
+          "attributes": {
+            "INSTANCE_CODE": "BK-004",
+            "MODEL": "SC2",
+            "HEIGHT": "9000",
+            "CAPACITY": "10"
+          }
+        },
+        {
+          "blockName": "RACK_SC2_A",
+          "attributes": {
+            "INSTANCE_CODE": "BK-005",
+            "MODEL": "SC2",
+            "HEIGHT": "9000",
+            "CAPACITY": "10"
+          }
+        },
+        {
+          "blockName": "RACK_SC2_A",
+          "attributes": {
+            "INSTANCE_CODE": "BK-006",
+            "MODEL": "SC2",
+            "HEIGHT": "9000",
+            "CAPACITY": "10"
+          }
+        },
+        {
+          "blockName": "RACK_SC2_A",
+          "attributes": {
+            "INSTANCE_CODE": "BK-007",
+            "MODEL": "SC2",
+            "HEIGHT": "9000",
+            "CAPACITY": "10"
+          }
+        }
+      ]
+    },
+    {
+      "caseId": "B02",
+      "sourceScenarioId": null,
+      "sourceCategory": "limite_semantico",
+      "userUtterance": "Caso sintético: lote vacío.",
+      "sceneId": "S00_BASE",
+      "expectedDecision": "REJECT",
+      "expectedRuleCodes": [
+        "SEM-005"
+      ],
+      "proposed": []
+    },
+    {
+      "caseId": "B03",
+      "sourceScenarioId": null,
+      "sourceCategory": "limite_semantico",
+      "userUtterance": "Caso sintético: lote de 6 racks válido semánticamente.",
+      "sceneId": "S00_BASE",
+      "expectedDecision": "VALID",
+      "expectedRuleCodes": [],
+      "proposed": [
+        {
+          "blockName": "RACK_SC2_A",
+          "attributes": {
+            "INSTANCE_CODE": "BK-001",
+            "MODEL": "SC2",
+            "HEIGHT": "9000",
+            "CAPACITY": "10"
+          }
+        },
+        {
+          "blockName": "RACK_SC2_A",
+          "attributes": {
+            "INSTANCE_CODE": "BK-002",
+            "MODEL": "SC2",
+            "HEIGHT": "9000",
+            "CAPACITY": "10"
+          }
+        },
+        {
+          "blockName": "RACK_SC2_A",
+          "attributes": {
+            "INSTANCE_CODE": "BK-003",
+            "MODEL": "SC2",
+            "HEIGHT": "9000",
+            "CAPACITY": "10"
+          }
+        },
+        {
+          "blockName": "RACK_SC2_A",
+          "attributes": {
+            "INSTANCE_CODE": "BK-004",
+            "MODEL": "SC2",
+            "HEIGHT": "9000",
+            "CAPACITY": "10"
+          }
+        },
+        {
+          "blockName": "RACK_SC2_A",
+          "attributes": {
+            "INSTANCE_CODE": "BK-005",
+            "MODEL": "SC2",
+            "HEIGHT": "9000",
+            "CAPACITY": "10"
+          }
+        },
+        {
+          "blockName": "RACK_SC2_A",
+          "attributes": {
+            "INSTANCE_CODE": "BK-006",
+            "MODEL": "SC2",
+            "HEIGHT": "9000",
+            "CAPACITY": "10"
+          }
+        }
+      ]
+    }
+  ]
+}

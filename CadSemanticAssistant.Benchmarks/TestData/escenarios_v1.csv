@@ -1,0 +1,31 @@
+﻿id;sceneId;category;userUtterance;expectedDecision;expectedRuleCodes;allowedRepairs;goldPlacementJson
+T01;S00_BASE;valida;Inserta un rack SC2 en X=0, Y=16500 mm con altura 12 m y capacidad 40.;VALID;;;"{""instances"": [{""block"": ""RACK_SC2_A"", ""positionMm"": [0, 16500, 0], ""INSTANCE_CODE"": ""RK-101""}]}"
+T02;S00_BASE;valida;Inserta dos racks SC2 en X=0 y X=6000, Y=16500 mm, altura 12 m y capacidad 40.;VALID;;;"{""instances"": [{""block"": ""RACK_SC2_A"", ""positionMm"": [0, 16500, 0], ""INSTANCE_CODE"": ""RK-101""}, {""block"": ""RACK_SC2_A"", ""positionMm"": [6000, 16500, 0], ""INSTANCE_CODE"": ""RK-102""}]}"
+T03;S00_BASE;valida;Añade una baliza ámbar de modo fijo a MACHINE_C, en X=28900 Y=11000.;VALID;;;"{""instances"": [{""block"": ""BEACON_A"", ""positionMm"": [28900, 11000, 0], ""INSTANCE_CODE"": ""CP-101""}]}"
+T04;S00_BASE;valida;Añade una botonera de 2 pulsadores de Reset a MACHINE_D en X=32000 Y=2000.;VALID;;;"{""instances"": [{""block"": ""BUTTON_STATION_A"", ""positionMm"": [32000, 2000, 0], ""INSTANCE_CODE"": ""CP-102""}]}"
+T05;S00_BASE;semantica;Inserta un rack SC2 con código RK-001 en X=0 Y=16500.;REJECT;SEM-004;propose_unused_instance_code;
+T06;S00_BASE;semantica;Inserta un rack SC2 sin definir su altura en X=0 Y=16500.;REJECT;SEM-002;ask_missing_value;
+T07;S00_BASE;semantica;Inserta un rack SC2 de 21 metros de altura en X=0 Y=16500.;REJECT;SEM-003;ask_valid_value;
+T08;S00_BASE;semantica;Inserta un rack SC2 con capacidad cero en X=0 Y=16500.;REJECT;SEM-003;ask_valid_value;
+T09;S00_BASE;semantica;Inserta bloque RACK_SC2_A con MODEL=SC3 en X=0 Y=16500.;REJECT;SEM-003;ask_valid_value;
+T10;S00_BASE;semantica;Inserta el modelo de rack RACK_SC9_A en X=0 Y=16500.;REJECT;SEM-001;suggest_available_models;
+T11;S00_BASE;complemento;Asigna esta baliza al rack RK-001.;REJECT;SEM-006;ask_select_parent;
+T12;S00_BASE;complemento;Añade una botonera de reset a MACHINE_C en X=29400, Y=11000.;REJECT;SEM-007;suggest_compatible_machine;
+T13;S00_BASE;complemento;Añade otra baliza a MACHINE_A en X=4700,Y=12000.;REJECT;SEM-008;choose_other_parent;
+T14;S00_BASE;geometria;Inserta un rack SC2 encima del existente RK-001, con punto en X=1000 Y=0.;REJECT;GEO-004;translate;
+T15;S00_BASE;geometria;Inserta rack SC2 en X=0, Y=1200, debajo de los racks de la siguiente fila.;REJECT;GEO-005;translate;
+T16;S00_BASE;geometria;Inserta rack SC2 a X=7800, Y=11900 cerca de MACHINE_A.;REJECT;GEO-006;translate;
+T17;S00_BASE;geometria;Inserta rack SC2 en X=24000 Y=5000.;REJECT;GEO-003;translate;
+T18;S00_BASE;geometria;Inserta rack SC2 en X=36000 Y=18000.;REJECT;GEO-002;translate;
+T19;S00_BASE;geometria;Añade una baliza a MACHINE_C en X=28600 Y=11000.;REJECT;GEO-004,GEO-008;translate_around_parent;
+T20;S00_BASE;geometria;Añade baliza a MACHINE_C en X=31200 Y=11000.;REJECT;GEO-008;translate_around_parent;
+T21;S00_BASE;ambiguedad;Inserta un rack SC2 cerca de esta máquina.;CLARIFY;OP-001;ask_clarification;
+T22;S00_BASE;ambiguedad;Inserta un rack SC2 a la derecha.;CLARIFY;OP-001;ask_clarification;
+T23;S01_LIMITADA;restricciones_compuestas;En la zona ZONE_TIGHT inserta 4 racks SC2 en una fila, separados 1500 mm.;REPAIRABLE;GEO-002;ask_reduce_quantity,choose_other_zone;"{""repairExample"": {""quantity"": 3, ""positionsMm"": [[21000, 16500, 0], [26500, 16500, 0], [32000, 16500, 0]]}}"
+T24;S01_LIMITADA;restricciones_compuestas;"Inserta exactamente 4 racks SC2 en una fila dentro de ZONE_TIGHT con separación de 1500 mm; no cambies la cantidad.";REJECT;GEO-002,OP-002;choose_other_zone_with_approval,cancel;
+T25;S00_BASE;reparacion;Inserta un rack SC2 en X=24000,Y=5000, si no cabe sugiere un lugar alternativo.;REPAIRABLE;GEO-003;translate;"{""repairExample"": {""positionMm"": [21000, 14500, 0], ""requiresUserConfirmation"": true}}"
+T26;S03_UNITLESS;operativa;Inserta un rack SC2 en X=0 Y=16500.;REJECT;GEO-001;ask_convert_or_define_units;
+T27;S00_BASE;operativa;Inserta un rack SC2 en X=0 Y=16500, pero alguien modifica el dibujo durante la confirmación.;REVALIDATE;OP-003;replan,ask_user_confirmation;
+T28;S00_BASE;operativa;Inserta dos racks SC2, pero falla la creación del segundo bloque.;ROLLBACK;OP-004;cancel;
+T29;S00_BASE;complemento;Añade botonera Reset a MACHINE_D demasiado próxima, en X=31500 Y=2000.;REJECT;GEO-009;translate_around_parent;
+T30;S00_BASE;semantica;Inserta rack SC2 con un campo inventado SERIAL_NO y propiedades válidas.;REJECT;SEM-003;ask_valid_value;
